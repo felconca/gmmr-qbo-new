@@ -1,0 +1,22 @@
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use Core\Console\Commands\CreateControllerCommand;
+use Core\Console\Commands\CreateDatabaseCommand;
+use Core\Console\Commands\CreateTableCommand;
+use Core\Console\Commands\MakeTableCommand;
+use Core\Console\Commands\UpdateTableCommand;
+
+$Core = new Application('Routing Console', '1.0.0');
+
+// Register commands
+$Core->add(new CreateControllerCommand());
+$Core->add(new CreateDatabaseCommand());
+$Core->add(new CreateTableCommand());
+
+// tables arguments for console
+$Core->add(new MakeTableCommand());
+$Core->add(new UpdateTableCommand());
+// run Application commands
+$Core->run();
