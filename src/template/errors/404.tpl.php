@@ -51,7 +51,7 @@
         .back-home {
             display: inline-block;
             border: 2px solid #222;
-            color: #fff;
+            color: #fff !important;
             text-transform: uppercase;
             font-weight: 600;
             padding: 0.75rem 1rem 0.6rem;

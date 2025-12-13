@@ -75,6 +75,20 @@ angular
         data: { breadcrumb: "Dashboard", pageTitle: "GMMR-QBO | Dashboard" },
       });
 
+      // invoices
+      $stateProvider.state("app.non-pharma", {
+        url: "/non-pharma",
+        templateUrl: "src/template/non-pharma/list.tpl.php",
+        controller: "nonpharmaCtrl",
+        resolve: {
+          loadCtrl: function ($ocLazyLoad) {
+            return $ocLazyLoad.load("src/template/non-pharma/non-pharma.ctrl.js");
+          },
+        },
+        data: { breadcrumb: "Non-Pharma", pageTitle: "GMMR-QBO | Non-Pharma" },
+      });
+
+      // set to url to html5
       $locationProvider.html5Mode(true);
     },
   ])
