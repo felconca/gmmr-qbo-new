@@ -20,9 +20,11 @@ class Rest
     {
         $this->_code = $status;
         $this->set_headers();
-        echo is_array($data) ? json_encode($data) : $data;
+
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         exit;
     }
+
 
     public function setUserData($data)
     {

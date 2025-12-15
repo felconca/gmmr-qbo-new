@@ -234,7 +234,7 @@ angular
     sc.generating = false;
 
     sc.decrypted = AuthService.getUser();
-    console.log(sc.decrypted);
+    //    console.log(sc.decrypted);
     sc.userInfo = {
       id: sc.decrypted.id,
       alias: sc.decrypted.short_name,

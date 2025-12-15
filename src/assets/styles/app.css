@@ -10,10 +10,11 @@
   --red-light: #dc4c64;
 }
 * {
-  font-size: 14px;
+  font-size: 13px;
   font-family: "Inter", sans-serif;
   font-optical-sizing: auto;
   color: #212529;
+  font-weight: 500;
 }
 html {
   height: 100%;
@@ -26,6 +27,14 @@ body {
 a {
   cursor: pointer;
   color: #017137 !important;
+}
+.link-anchor {
+  text-decoration-line: underline !important; /* Ensures an underline is present */
+  text-decoration-style: dotted !important; /* Changes the style of the underline to dotted */
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
 }
 .login-form {
   background-color: #ffffff;

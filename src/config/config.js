@@ -18,6 +18,7 @@ window.APP_MODULES = [
   // directives
   "src/directives/loader.dir.js",
   "src/directives/breadcrumbs.dir.js",
+  "src/directives/ng.directives.js",
 
   // services
   "src/services/loader.svc.js",

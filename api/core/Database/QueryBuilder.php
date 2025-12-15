@@ -37,11 +37,28 @@ class QueryBuilder
     //     return $this;
     // }
 
+    // public function ORDERBY($column, $direction = 'ASC')
+    // {
+    //     $this->orderBy = "ORDER BY `$column` $direction";
+    //     return $this;
+    // }
     public function ORDERBY($column, $direction = 'ASC')
     {
-        $this->orderBy = "ORDER BY `$column` $direction";
+        if (strpos($column, '.') !== false) {
+            $this->orderBy = "ORDER BY $column $direction";
+        } else {
+            $this->orderBy = "ORDER BY `$column` $direction";
+        }
+
         return $this;
     }
+    public function GROUPBY($column)
+    {
+        $columnWrap = $this->wrapColumn($column); // already wrapped
+        $this->groupBy = "GROUP BY $columnWrap";   // do NOT add extra backticks
+        return $this;
+    }
+
 
     public function LIMIT($limit, $offset = null)
     {
@@ -60,7 +77,9 @@ class QueryBuilder
             if ($type === '') $type = ''; // plain JOIN if no prefix
             $table = $arguments[0];
             $on = $arguments[1];
-            $this->joins .= " {$type} JOIN `$table` ON $on";
+            // $this->joins .= " {$type} JOIN `$table` ON $on";
+            $this->joins .= " {$type} JOIN " . $this->formatTable($table) . " ON $on";
+
             return $this;
         }
 
@@ -69,7 +88,9 @@ class QueryBuilder
 
     private function buildQuery()
     {
-        $sql = "SELECT {$this->select} FROM `{$this->table}`";
+        // $sql = "SELECT {$this->select} FROM `{$this->table}`";
+        $sql = "SELECT {$this->select} FROM " . $this->formatTable($this->table);
+
 
         if (!empty($this->joins)) {
             $sql .= ' ' . $this->joins;
@@ -112,10 +133,10 @@ class QueryBuilder
 
     public function first()
     {
-        $this->LIMIT(1);
-        $rows = $this->get();
-        return $rows[0] ?? null;
+        return $this->LIMIT(1)->get()[0] ?? null;
     }
+
+
 
     public function reset()
     {
@@ -201,58 +222,199 @@ class QueryBuilder
      * @param array $conditions
      * @return mixed $this for SELECT, affected_rows for UPDATE/DELETE
      */
-    public function WHERE(array $conditions)
+    public function WHERE($conditions, array $bindings = [])
     {
-        // Build WHERE array
-        $this->where = [];
-        foreach ($conditions as $column => $value) {
-            $escaped = $this->conn->real_escape_string($value);
-            $this->where[] = "`$column` = '$escaped'";
+        // Initialize where only if empty (allows multiple WHERE calls)
+        if (!is_array($this->where)) {
+            $this->where = [];
+        }
+        if (is_string($conditions)) {
+            $this->where[] = $conditions;
+
+            // Store bindings (optional but recommended)
+            if (!empty($bindings)) {
+                foreach ($bindings as $value) {
+                    $this->bindings[] = $value;
+                }
+            }
+        } elseif (is_array($conditions)) {
+            foreach ($conditions as $column => $value) {
+                $col = $this->wrapColumn($column);
+                if (is_null($value)) {
+                    $this->where[] = "$col IS NULL";
+                } else {
+                    $escaped = $this->conn->real_escape_string($value);
+                    $this->where[] = "$col = '$escaped'";
+                }
+            }
+        } else {
+            throw new \InvalidArgumentException("WHERE expects array or raw SQL string");
         }
 
-        // Execute update if updateTable is set
         if ($this->updateTable && !empty($this->updateData)) {
             $set = [];
             foreach ($this->updateData as $column => $value) {
                 $escaped = $this->conn->real_escape_string($value);
                 $set[] = "`$column` = '$escaped'";
             }
-            $setStr = implode(', ', $set);
-            $whereStr = implode(' AND ', $this->where);
 
-            $sql = "UPDATE `{$this->updateTable}` SET $setStr WHERE $whereStr";
+            $sql = "UPDATE `{$this->updateTable}` 
+                SET " . implode(', ', $set) . "
+                WHERE " . implode(' AND ', $this->where);
+
             $result = $this->conn->query($sql);
-
             $affectedRows = $this->conn->affected_rows;
+
+            // reset state
             $this->updateTable = '';
             $this->updateData = [];
             $this->where = [];
 
             if (!$result) {
-                throw new \Exception("MySQL Update Error: " . $this->conn->error . "\nQuery: $sql");
+                throw new \Exception("MySQL Update Error: {$this->conn->error}\nQuery: $sql");
             }
 
             return $affectedRows;
         }
 
-        // Execute delete if deleteTable is set
         if ($this->deleteTable) {
-            $whereStr = implode(' AND ', $this->where);
-            $sql = "DELETE FROM `{$this->deleteTable}` WHERE $whereStr";
-            $result = $this->conn->query($sql);
+            $sql = "DELETE FROM `{$this->deleteTable}` 
+                WHERE " . implode(' AND ', $this->where);
 
+            $result = $this->conn->query($sql);
             $affectedRows = $this->conn->affected_rows;
+
+            // reset state
             $this->deleteTable = '';
             $this->where = [];
 
             if (!$result) {
-                throw new \Exception("MySQL Delete Error: " . $this->conn->error . "\nQuery: $sql");
+                throw new \Exception("MySQL Delete Error: {$this->conn->error}\nQuery: $sql");
             }
 
             return $affectedRows;
         }
 
-        // Otherwise, allow chaining for SELECT
+        // SELECT chaining
         return $this;
+    }
+    public function WHERE_IN(string $column, array $values)
+    {
+        if (empty($values)) {
+            // Prevent invalid SQL: IN ()
+            $this->where[] = "0 = 1";
+            return $this;
+        }
+
+        $escaped = array_map(
+            fn($v) => is_numeric($v)
+                ? $v
+                : "'" . $this->conn->real_escape_string($v) . "'",
+            $values
+        );
+
+        $columnSql = $this->wrapColumn($column);
+
+        $this->where[] = "$columnSql IN (" . implode(',', $escaped) . ")";
+        return $this;
+    }
+
+    public function WHERE_NOT_IN(string $column, array $values)
+    {
+        if (empty($values)) {
+            // If no values, the condition is always true
+            $this->where[] = "1 = 1";
+            return $this;
+        }
+
+        $escaped = array_map(
+            fn($v) => is_numeric($v)
+                ? $v
+                : "'" . $this->conn->real_escape_string($v) . "'",
+            $values
+        );
+
+        $columnSql = $this->wrapColumn($column);
+
+        $this->where[] = "$columnSql NOT IN (" . implode(',', $escaped) . ")";
+        return $this;
+    }
+
+
+    public function OR_WHERE($conditions)
+    {
+        if (!is_array($this->where)) {
+            $this->where = [];
+        }
+
+        if (is_string($conditions)) {
+            $this->where[] = "OR ($conditions)";
+        } elseif (is_array($conditions)) {
+            $orParts = [];
+            foreach ($conditions as $column => $value) {
+                if (is_null($value)) {
+                    $orParts[] = "`$column` IS NULL";
+                } else {
+                    $escaped = $this->conn->real_escape_string($value);
+                    $orParts[] = "`$column` = '$escaped'";
+                }
+            }
+            $this->where[] = "OR (" . implode(' AND ', $orParts) . ")";
+        } else {
+            throw new \InvalidArgumentException("OR_WHERE expects array or raw SQL string");
+        }
+
+        return $this;
+    }
+
+    public function WHERE_BETWEEN(string $column, $start, $end)
+    {
+        $startEscaped = $this->conn->real_escape_string($start);
+        $endEscaped   = $this->conn->real_escape_string($end);
+
+        // Handle table alias (p.TranDate → `p`.`TranDate`)
+        if (strpos($column, '.') !== false) {
+            [$table, $col] = explode('.', $column, 2);
+            $columnSql = "`$table`.`$col`";
+        } else {
+            $columnSql = $this->wrapColumn($column);
+        }
+
+        $this->where[] = "$columnSql BETWEEN '$startEscaped' AND '$endEscaped'";
+        return $this;
+    }
+
+    private function formatTable(string $table): string
+    {
+        // db.table alias OR table alias
+        if (preg_match('/^(.+?)\s+(\w+)$/', $table, $m)) {
+            $tableName = $m[1];
+            $alias     = $m[2];
+
+            if (strpos($tableName, '.') !== false) {
+                [$db, $tbl] = explode('.', $tableName, 2);
+                return "`$db`.`$tbl` $alias";
+            }
+
+            return "`$tableName` $alias";
+        }
+
+        // db.table (no alias)
+        if (strpos($table, '.') !== false) {
+            [$db, $tbl] = explode('.', $table, 2);
+            return "`$db`.`$tbl`";
+        }
+
+        // plain table
+        return "`$table`";
+    }
+
+    private function wrapColumn(string $column): string
+    {
+        if (strpos($column, '.') !== false) {
+            [$table, $col] = explode('.', $column, 2);
+            return "`$table`.`$col`";
+        }
+        return "`$column`";
     }
 }

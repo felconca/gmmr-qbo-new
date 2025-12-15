@@ -15,11 +15,48 @@ Route::get('profile/{img}', 'AuthController@profile', [new AuthSession("user")])
 Route::get('token', 'QBOTokenController@token', [new AuthSession("user")]);
 Route::get('token/generate', 'QBOTokenController@generate', [new AuthSession("user")]);
 
-Route::get('users', 'AppController@index');
-Route::post('users', 'AppController@store');
-Route::put('users', 'AppController@update');
-Route::delete("users", "AppController@delete");
-Route::get("user/{id}", "AppController@edit");
+// gmmr nonpharmacy
+Route::group(['prefix' => 'nonpharmacy', 'middleware' => [new AuthSession()]], function () {
+    // gmmr functions
+    Route::get('list', 'NonPharmaController@index');
+    Route::get('edit', 'NonPharmaController@edit');
+    Route::get('details', 'NonPharmaController@details');
+    Route::post('update', 'NonPharmaController@update');
+
+    // for quickbooks functions
+    Route::get('add_qbo', 'NonPharmaController@update_qbo');
+    Route::get('update_qbo', 'NonPharmaController@update_qbo');
+    Route::get('edit_qbo', 'NonPharmaController@edit_qbo');
+    Route::get('delete_qbo', 'NonPharmaController@update_qbo');
+});
+
+// gmmr pharmacy
+Route::group(['prefix' => 'pharmacy', 'middleware' => [new AuthSession()]], function () {
+    // gmmr functions
+    Route::get('list', 'PharmacyController@index');
+    Route::get('edit', 'PharmacyController@edit');
+    Route::get('details', 'PharmacyController@details');
+    Route::post('update', 'PharmacyController@update');
+    // for quickbooks functions
+    Route::get('add_qbo', 'PharmacyController@update_qbo');
+    Route::get('update_qbo', 'PharmacyController@update_qbo');
+    Route::get('edit_qbo', 'PharmacyController@edit_qbo');
+    Route::get('delete_qbo', 'PharmacyController@update_qbo');
+});
+// gmmr professional fees
+Route::group(['prefix' => 'pf', 'middleware' => [new AuthSession()]], function () {
+    // gmmr functions
+    Route::get('list', 'ProfessionalFeeController@index');
+    Route::get('edit', 'ProfessionalFeeController@edit');
+    Route::post('update', 'ProfessionalFeeController@update');
+    Route::get('details', 'ProfessionalFeeController@details');
+    // for quickbooks functions
+    Route::post('add_qbo', 'ProfessionalFeeController@update_qbo');
+    Route::post('update_qbo', 'ProfessionalFeeController@update_qbo');
+    Route::post('edit_qbo', 'ProfessionalFeeController@edit_qbo');
+    Route::post('delete_qbo', 'ProfessionalFeeController@delete_qbo');
+});
+
 
 // Route::get('users/{id}', 'AppController@edit', [new AuthToken()]);
 Route::get('users/id/{id}/date/{date}', 'AppController@showByIdDate', [new AuthToken()]);
@@ -31,7 +68,7 @@ Route::post('index', 'AppController@index', [new AuthSession("user")]);
 
 // Group with prefix
 Route::group(['prefix' => 'api/inventory', 'middleware' => [new AuthToken()]], function () {
-    Route::get('items', 'InventoryController@index');           // GET /api/inventory/items
-    Route::get('items/{id}', 'InventoryController@show');       // GET /api/inventory/items/123
-    Route::post('items', 'InventoryController@store');          // POST /api/inventory/items
+    Route::get('items', 'InventoryController@index');
+    Route::get('items/{id}', 'InventoryController@show');
+    Route::post('items', 'InventoryController@store');
 });
