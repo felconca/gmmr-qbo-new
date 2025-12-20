@@ -8,8 +8,8 @@ class QueryBuilder
     private $select = '*';
     private $table = '';
     private $updateTable = '';
-    private $updateData = [];
-    private $where = [];
+    private $updateData = array();
+    private $where = array();
     private $joins = '';
     private $orderBy = '';
     private $limit = '';
@@ -71,8 +71,9 @@ class QueryBuilder
     // -----------------------
     public function __call($name, $arguments)
     {
-        // If method ends with "JOIN", treat it as a JOIN
-        if (str_ends_with(strtoupper($name), 'JOIN') && count($arguments) === 2) {
+        // PHP 5.6: No str_ends_with(). We'll compare manually.
+        $callName = strtoupper($name);
+        if (substr($callName, -4) === 'JOIN' && count($arguments) === 2) {
             $type = strtoupper(str_replace('JOIN', '', $name)); // e.g., LEFT, RIGHT, INNER, CROSS
             if ($type === '') $type = ''; // plain JOIN if no prefix
             $table = $arguments[0];
@@ -124,7 +125,7 @@ class QueryBuilder
             throw new \Exception("MySQL Error: " . $this->conn->error . "\nQuery: $query");
         }
 
-        $rows = [];
+        $rows = array();
         while ($row = $result->fetch_object()) {
             $rows[] = $row;
         }
@@ -133,7 +134,8 @@ class QueryBuilder
 
     public function first()
     {
-        return $this->LIMIT(1)->get()[0] ?? null;
+        $results = $this->LIMIT(1)->get();
+        return isset($results[0]) ? $results[0] : null;
     }
 
 
@@ -142,7 +144,7 @@ class QueryBuilder
     {
         $this->select = '*';
         $this->table = '';
-        $this->where = [];
+        $this->where = array();
         $this->joins = '';
         $this->orderBy = '';
         $this->limit = '';
@@ -157,13 +159,14 @@ class QueryBuilder
      * @param array $data  Associative array of column => value
      * @return int|bool     Inserted ID on success, false on failure
      */
-    public function insert(string $table, array $data)
+    public function insert($table, array $data)
     {
         $columns = implode('`, `', array_keys($data));
 
-        $valuesArr = array_map(function ($val) {
-            return "'" . $this->conn->real_escape_string($val) . "'";
-        }, array_values($data));
+        $valuesArr = array();
+        foreach (array_values($data) as $val) {
+            $valuesArr[] = "'" . $this->conn->real_escape_string($val) . "'";
+        }
 
         $values = implode(', ', $valuesArr);
 
@@ -184,7 +187,7 @@ class QueryBuilder
      * @param array $data Associative array of column => value
      * @return $this
      */
-    public function update(string $table, array $data)
+    public function update($table, array $data)
     {
         if (empty($table) || empty($data)) {
             throw new \Exception("Table and data are required for update");
@@ -202,7 +205,7 @@ class QueryBuilder
      * @param string $table Table name
      * @return $this
      */
-    public function delete(string $table)
+    public function delete($table)
     {
         if (empty($table)) {
             throw new \Exception("Table name is required for delete");
@@ -222,11 +225,11 @@ class QueryBuilder
      * @param array $conditions
      * @return mixed $this for SELECT, affected_rows for UPDATE/DELETE
      */
-    public function WHERE($conditions, array $bindings = [])
+    public function WHERE($conditions, array $bindings = array())
     {
         // Initialize where only if empty (allows multiple WHERE calls)
         if (!is_array($this->where)) {
-            $this->where = [];
+            $this->where = array();
         }
         if (is_string($conditions)) {
             $this->where[] = $conditions;
@@ -252,7 +255,7 @@ class QueryBuilder
         }
 
         if ($this->updateTable && !empty($this->updateData)) {
-            $set = [];
+            $set = array();
             foreach ($this->updateData as $column => $value) {
                 $escaped = $this->conn->real_escape_string($value);
                 $set[] = "`$column` = '$escaped'";
@@ -267,8 +270,8 @@ class QueryBuilder
 
             // reset state
             $this->updateTable = '';
-            $this->updateData = [];
-            $this->where = [];
+            $this->updateData = array();
+            $this->where = array();
 
             if (!$result) {
                 throw new \Exception("MySQL Update Error: {$this->conn->error}\nQuery: $sql");
@@ -286,7 +289,7 @@ class QueryBuilder
 
             // reset state
             $this->deleteTable = '';
-            $this->where = [];
+            $this->where = array();
 
             if (!$result) {
                 throw new \Exception("MySQL Delete Error: {$this->conn->error}\nQuery: $sql");
@@ -298,7 +301,7 @@ class QueryBuilder
         // SELECT chaining
         return $this;
     }
-    public function WHERE_IN(string $column, array $values)
+    public function WHERE_IN($column, array $values)
     {
         if (empty($values)) {
             // Prevent invalid SQL: IN ()
@@ -306,12 +309,14 @@ class QueryBuilder
             return $this;
         }
 
-        $escaped = array_map(
-            fn($v) => is_numeric($v)
-                ? $v
-                : "'" . $this->conn->real_escape_string($v) . "'",
-            $values
-        );
+        $escaped = array();
+        foreach ($values as $v) {
+            if (is_numeric($v)) {
+                $escaped[] = $v;
+            } else {
+                $escaped[] = "'" . $this->conn->real_escape_string($v) . "'";
+            }
+        }
 
         $columnSql = $this->wrapColumn($column);
 
@@ -319,7 +324,7 @@ class QueryBuilder
         return $this;
     }
 
-    public function WHERE_NOT_IN(string $column, array $values)
+    public function WHERE_NOT_IN($column, array $values)
     {
         if (empty($values)) {
             // If no values, the condition is always true
@@ -327,12 +332,14 @@ class QueryBuilder
             return $this;
         }
 
-        $escaped = array_map(
-            fn($v) => is_numeric($v)
-                ? $v
-                : "'" . $this->conn->real_escape_string($v) . "'",
-            $values
-        );
+        $escaped = array();
+        foreach ($values as $v) {
+            if (is_numeric($v)) {
+                $escaped[] = $v;
+            } else {
+                $escaped[] = "'" . $this->conn->real_escape_string($v) . "'";
+            }
+        }
 
         $columnSql = $this->wrapColumn($column);
 
@@ -344,13 +351,13 @@ class QueryBuilder
     public function OR_WHERE($conditions)
     {
         if (!is_array($this->where)) {
-            $this->where = [];
+            $this->where = array();
         }
 
         if (is_string($conditions)) {
             $this->where[] = "OR ($conditions)";
         } elseif (is_array($conditions)) {
-            $orParts = [];
+            $orParts = array();
             foreach ($conditions as $column => $value) {
                 if (is_null($value)) {
                     $orParts[] = "`$column` IS NULL";
@@ -367,14 +374,16 @@ class QueryBuilder
         return $this;
     }
 
-    public function WHERE_BETWEEN(string $column, $start, $end)
+    public function WHERE_BETWEEN($column, $start, $end)
     {
         $startEscaped = $this->conn->real_escape_string($start);
         $endEscaped   = $this->conn->real_escape_string($end);
 
         // Handle table alias (p.TranDate → `p`.`TranDate`)
         if (strpos($column, '.') !== false) {
-            [$table, $col] = explode('.', $column, 2);
+            $parts = explode('.', $column, 2);
+            $table = $parts[0];
+            $col = $parts[1];
             $columnSql = "`$table`.`$col`";
         } else {
             $columnSql = $this->wrapColumn($column);
@@ -384,7 +393,7 @@ class QueryBuilder
         return $this;
     }
 
-    private function formatTable(string $table): string
+    private function formatTable($table)
     {
         // db.table alias OR table alias
         if (preg_match('/^(.+?)\s+(\w+)$/', $table, $m)) {
@@ -392,7 +401,9 @@ class QueryBuilder
             $alias     = $m[2];
 
             if (strpos($tableName, '.') !== false) {
-                [$db, $tbl] = explode('.', $tableName, 2);
+                $parts = explode('.', $tableName, 2);
+                $db = $parts[0];
+                $tbl = $parts[1];
                 return "`$db`.`$tbl` $alias";
             }
 
@@ -401,7 +412,9 @@ class QueryBuilder
 
         // db.table (no alias)
         if (strpos($table, '.') !== false) {
-            [$db, $tbl] = explode('.', $table, 2);
+            $parts = explode('.', $table, 2);
+            $db = $parts[0];
+            $tbl = $parts[1];
             return "`$db`.`$tbl`";
         }
 
@@ -409,10 +422,12 @@ class QueryBuilder
         return "`$table`";
     }
 
-    private function wrapColumn(string $column): string
+    private function wrapColumn($column)
     {
         if (strpos($column, '.') !== false) {
-            [$table, $col] = explode('.', $column, 2);
+            $parts = explode('.', $column, 2);
+            $table = $parts[0];
+            $col = $parts[1];
             return "`$table`.`$col`";
         }
         return "`$column`";

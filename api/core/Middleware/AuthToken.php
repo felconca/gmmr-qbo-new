@@ -11,7 +11,7 @@ class AuthToken
 
     public function __construct()
     {
-        $this->jwtSecret = $_ENV['JWT_SECRET'] ?? 'default-secret';
+        $this->jwtSecret = isset($_ENV['JWT_SECRET']) ? $_ENV['JWT_SECRET'] : 'default-secret';
     }
 
     public function handle($controller, $next)

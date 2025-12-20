@@ -2,20 +2,23 @@
 
 namespace Core\Database;
 
+// For PHP 5.6+ (use array() instead of [])
 class Database
 {
-    private $connections = [];
+    private $connections = array();
 
     public function __construct()
     {
-        $host = $_ENV['DB_HOST'] ?? 'localhost';
-        $user = $_ENV['DB_USER'] ?? 'root';
-        $password = $_ENV['DB_PASSWORD'] ?? '';
-        $dbNames = array_filter(array_map('trim', explode(',', $_ENV['DB_CONNECTIONS'] ?? '')));
+        $host = isset($_ENV['DB_HOST']) ? $_ENV['DB_HOST'] : 'localhost';
+        $user = isset($_ENV['DB_USER']) ? $_ENV['DB_USER'] : 'root';
+        $password = isset($_ENV['DB_PASSWORD']) ? $_ENV['DB_PASSWORD'] : '';
+        $dbConnectionsEnv = isset($_ENV['DB_CONNECTIONS']) ? $_ENV['DB_CONNECTIONS'] : '';
+        $dbNames = array_filter(array_map('trim', explode(',', $dbConnectionsEnv)));
 
         // If no database names are listed, still allow a single fallback
         if (empty($dbNames)) {
-            $dbNames = [$_ENV['DB_NAME'] ?? ''];
+            // array() for PHP 5.6 compatibility
+            $dbNames = array(isset($_ENV['DB_NAME']) ? $_ENV['DB_NAME'] : '');
         }
 
         foreach ($dbNames as $dbName) {
@@ -37,8 +40,10 @@ class Database
     {
         // Use the first DB as default if none specified
         if ($dbName === null) {
-            $first = array_key_first($this->connections);
-            return $first ? $this->connections[$first] : null;
+            // PHP 5.6 compatible: no array_key_first, use manual reset
+            $keys = array_keys($this->connections);
+            $first = count($keys) ? $keys[0] : null;
+            return $first ? isset($this->connections[$first]) ? new QueryBuilder($this->connections[$first]) : null : null;
         }
 
         if (!isset($this->connections[$dbName])) {
@@ -46,7 +51,6 @@ class Database
             return null;
         }
 
-        // return $this->connections[$dbName];
         return new QueryBuilder($this->connections[$dbName]);
     }
 
@@ -71,7 +75,6 @@ class Database
     {
         // Allow calling like $db->marsdb()
         if (isset($this->connections[$name])) {
-            // return $this->connections[$name];
             return new QueryBuilder($this->connections[$name]);
         }
 
@@ -79,7 +82,6 @@ class Database
         if (strpos($name, 'get') === 0) {
             $dbName = lcfirst(substr($name, 3));
             if (isset($this->connections[$dbName])) {
-                // return $this->connections[$dbName];
                 return new QueryBuilder($this->connections[$dbName]);
             }
         }

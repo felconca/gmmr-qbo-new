@@ -6,7 +6,7 @@ use Includes\Rest;
 use Core\Database\Database;
 use Redis\RedisCache;
 
-class QBOTokenController extends Rest
+class QBOServiceController extends Rest
 {
     public function __construct()
     {
@@ -106,13 +106,31 @@ class QBOTokenController extends Rest
     public function token($request, $response, $params)
     {
         try {
-            $accessToken = $this->redis->get('accessToken');
-            $refreshToken = $this->redis->get('refreshToken');
+            // If Redis is not connected or throws a connection exception
+            try {
+                $accessToken = $this->redis->get('accessToken');
+                $refreshToken = $this->redis->get('refreshToken');
+            } catch (\RedisException $e) {
+                return $response([
+                    "status" => 503,
+                    "error" => "No connection found to Redis server",
+                    "details" => $e->getMessage()
+                ], 503);
+            } catch (\Throwable $e) {
+                return $response([
+                    "status" => 503,
+                    "error" => "No connection found to Redis server (unexpected error)",
+                    "details" => $e->getMessage()
+                ], 503);
+            }
 
             if ($accessToken !== null && $refreshToken !== null) {
-                $response(["accesstoken" => $accessToken, "refreshtoken" => $refreshToken], 200);
+                return $response([
+                    "accesstoken" => $accessToken,
+                    "refreshtoken" => $refreshToken
+                ], 200);
             } else {
-                $response([
+                return $response([
                     "status" => 400,
                     "error" => "One or both tokens are missing",
                     "details" => [
@@ -122,7 +140,27 @@ class QBOTokenController extends Rest
                 ], 400);
             }
         } catch (Exception $e) {
-            $response(["status" => 500, "error" => $e->getMessage()], 500);
+            return $response([
+                "status" => 500,
+                "error" => $e->getMessage()
+            ], 500);
         }
+    }
+    public function create_customer($request, $response, $params)
+    {
+        $input = $request->validate([
+            "token" => "required",
+            "pxid"  => "required|int|min:1",
+            "fname" => "required|string",
+            "lname" => "required|string",
+        ]);
+
+        $service = new QboCustomerService($this->db, $this->companyId);
+        $customerId = $service->createCustomer($input);
+
+        return $response([
+            "status" => 200,
+            "customer_id" => $customerId
+        ], 200);
     }
 }

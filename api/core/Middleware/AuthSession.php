@@ -6,37 +6,49 @@ class AuthSession
 {
     private $sessionKey;
 
+    // No type hinting for PHP 5.6 compatibility
     public function __construct($sessionKey = "user")
     {
         $this->sessionKey = $sessionKey;
     }
 
+    // $controller and $next are not type-hinted for PHP 5.6 compatibility
     public function handle($controller, $next)
     {
-        session_name($_ENV['AUTH_SESSION_NAME'] ?? 'PHP_SESSION');
-        // ✅ Secure session settings before starting
+        // Use PHP 5.6 compatible environment variable checks
+        $sessionName = isset($_ENV['AUTH_SESSION_NAME']) ? $_ENV['AUTH_SESSION_NAME'] : 'PHP_SESSION';
+        session_name($sessionName);
+
         if (session_status() === PHP_SESSION_NONE) {
-            session_set_cookie_params([
-                'lifetime' => (int)($_ENV['AUTH_SESSION_LIFETIME'] ?? 0),
-                'secure' => ($_ENV['AUTH_SESSION_SECURE'] ?? '') === TRUE,
-                'httponly' => ($_ENV['AUTH_SESSION_HTTPONLY'] ?? '') === TRUE,
-                'samesite' => $_ENV['AUTH_SESSION_SAMESITE'] ?? 'Strict'
-            ]);
+            // PHP 5.6 does not support 'samesite' in session_set_cookie_params
+            $lifetime = isset($_ENV['AUTH_SESSION_LIFETIME']) ? (int)$_ENV['AUTH_SESSION_LIFETIME'] : 0;
+            $path = '/';
+            $domain = '';
+            $secure = isset($_ENV['AUTH_SESSION_SECURE']) ? ($_ENV['AUTH_SESSION_SECURE'] === '1' || $_ENV['AUTH_SESSION_SECURE'] === 'true' || $_ENV['AUTH_SESSION_SECURE'] === true) : false;
+            $httponly = isset($_ENV['AUTH_SESSION_HTTPONLY']) ? ($_ENV['AUTH_SESSION_HTTPONLY'] === '1' || $_ENV['AUTH_SESSION_HTTPONLY'] === 'true' || $_ENV['AUTH_SESSION_HTTPONLY'] === true) : true;
+
+            // Order: lifetime, path, domain, secure, httponly for PHP 5.6
+            session_set_cookie_params($lifetime, $path, $domain, $secure, $httponly);
+
+            // Note: samesite cannot be set directly in PHP 5.6,
+            // If required, must use header() to set Set-Cookie manually.
+
             session_start();
         }
 
-        // 🔒 Check if the session key exists
+        // Check if session is set and user is authenticated
         if (!isset($_SESSION[$this->sessionKey])) {
-            return $controller->response([
+            // Use array() for PHP 5.6
+            return $controller->response(array(
                 "status" => 401,
                 "error"  => "Unauthorized - please login"
-            ], 401);
+            ), 401);
         }
 
-        // ✅ Optionally attach user data to controller (like JWT middleware)
+        // Attach user session data to controller if needed
         $controller->setUserData($_SESSION[$this->sessionKey]);
 
-        // ✅ Continue to next handler (controller action)
+        // Call next handler (controller action)
         return $next();
     }
 }

@@ -2,7 +2,7 @@ angular.module("app").directive("breadcrumbs", function (BreadcrumbService, $sta
   return {
     template: `
       <nav style="--bs-breadcrumb-divider: '>';" aria-label="breadcrumb">
-        <ol class="breadcrumb">
+        <ol class="breadcrumb mb-0">
           <li ng-repeat="bc in breadcrumbs track by $index"
               class="breadcrumb-item"
               ng-class="{active: $last}"

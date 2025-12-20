@@ -72,7 +72,11 @@ angular
       $stateProvider.state("app.home", {
         url: "/dashboard",
         templateUrl: "src/template/home/home.tpl.php",
-        data: { breadcrumb: "Dashboard", pageTitle: "GMMR-QBO | Dashboard" },
+        data: {
+          breadcrumb: "Home",
+          pageTitle: "GMMR-QBO | Home",
+          home: true,
+        },
       });
 
       // invoices
@@ -85,7 +89,7 @@ angular
             return $ocLazyLoad.load("src/template/non-pharma/non-pharma.ctrl.js");
           },
         },
-        data: { breadcrumb: "Non-Pharma", pageTitle: "GMMR-QBO | Non-Pharma" },
+        data: { breadcrumb: "NonPharma Sales", pageTitle: "GMMR-QBO | Non-Pharma" },
       });
 
       // set to url to html5
@@ -305,37 +309,28 @@ angular
       };
     };
 
-    sc.handleGetToken = function () {
-      $http
-        .get("api/token")
-        .then(function (res) {
-          sc.handleShowTokenModal();
-          sc.refreshToken = res.data.refreshtoken;
-          sc.accessToken = res.data.accesstoken;
-        })
-        .catch(function error(err) {
-          console.error("Error tokens:", err);
-        });
+    sc.handleGetToken = async () => {
+      sc.handleShowTokenModal();
+      sc.refreshToken = await AuthService.token("refreshtoken");
+      sc.accessToken = await AuthService.token("accesstoken");
     };
     sc.handleNewToken = function (token) {
       sc.generating = true;
-      $http
-        .get(`api/token/generate?token=${token}`)
-        .then(function (res) {
+      AuthService.generate(token)
+        .then((res) => {
           Toasty.showToast(
             "Generated!",
             `New token generated successfully`,
             `<i class="ph-fill ph-check-circle"></i>`,
             3000
           );
-          sc.refreshToken = res.data.data.refresh_token;
-          sc.accessToken = res.data.data.access_token;
+          sc.refreshToken = res.refresh_token;
+          sc.accessToken = res.access_token;
         })
         .catch(function error(err) {
           console.error("Error tokens:", err);
         })
         .finally(function () {
-          // sc.closeModal();
           sc.generating = false;
         });
     };

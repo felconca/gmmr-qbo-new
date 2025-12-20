@@ -24,6 +24,7 @@ window.APP_MODULES = [
   "src/services/loader.svc.js",
   "src/services/auth.svc.js",
   "src/services/breadcrumbs.svc.js",
+  "src/services/qbo.svc.js",
 
   // toasty
   "modules/toasty/toasty.css",

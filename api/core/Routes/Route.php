@@ -4,39 +4,40 @@ namespace Core\Routes;
 
 class Route
 {
-    private static array $routes = [];
-    private static array $groupStack = []; // Stack to track nested groups
+    // Removed type hints for PHP 5.6 compatibility
+    private static $routes = array();
+    private static $groupStack = array(); // Stack to track nested groups
 
     // Add GET route
-    public static function get(string $path, string $handler, array $middleware = [])
+    public static function get($path, $handler, $middleware = array())
     {
         self::addRoute('GET', $path, $handler, $middleware);
     }
 
     // Add POST route
-    public static function post(string $path, string $handler, array $middleware = [])
+    public static function post($path, $handler, $middleware = array())
     {
         self::addRoute('POST', $path, $handler, $middleware);
     }
 
-    public static function put(string $path, string $handler, array $middleware = [])
+    public static function put($path, $handler, $middleware = array())
     {
         self::addRoute('PUT', $path, $handler, $middleware);
     }
 
-    public static function delete(string $path, string $handler, array $middleware = [])
+    public static function delete($path, $handler, $middleware = array())
     {
         self::addRoute('DELETE', $path, $handler, $middleware);
     }
 
     // Return all routes
-    public static function all(): array
+    public static function all()
     {
         return self::$routes;
     }
 
     // Grouping function
-    public static function group(array $attributes, callable $callback)
+    public static function group($attributes, $callback)
     {
         // Push current group attributes to stack
         self::$groupStack[] = $attributes;
@@ -49,10 +50,10 @@ class Route
     }
 
     // Internal route addition considering current group(s)
-    private static function addRoute(string $method, string $path, string $handler, array $middleware)
+    private static function addRoute($method, $path, $handler, $middleware)
     {
         $prefix = '';
-        $groupMiddleware = [];
+        $groupMiddleware = array();
 
         // Apply all nested group attributes
         foreach (self::$groupStack as $group) {
@@ -70,6 +71,6 @@ class Route
         // Merge middleware
         $allMiddleware = array_merge($groupMiddleware, $middleware);
 
-        self::$routes[] = [$method, $fullPath, $handler, $allMiddleware];
+        self::$routes[] = array($method, $fullPath, $handler, $allMiddleware);
     }
 }

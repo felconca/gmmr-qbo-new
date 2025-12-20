@@ -29,9 +29,9 @@ class UpdateTableCommand extends Command
 
         $this->loadEnv();
 
-        $host = $_ENV['DB_HOST'] ?? 'localhost';
-        $user = $_ENV['DB_USER'] ?? 'root';
-        $pass = $_ENV['DB_PASSWORD'] ?? '';
+        $host = isset($_ENV['DB_HOST']) ? $_ENV['DB_HOST'] : 'localhost';
+        $user = isset($_ENV['DB_USER']) ? $_ENV['DB_USER'] : 'root';
+        $pass = isset($_ENV['DB_PASSWORD']) ? $_ENV['DB_PASSWORD'] : '';
 
         $mysqli = new mysqli($host, $user, $pass, $database);
         if ($mysqli->connect_error) {
@@ -126,7 +126,7 @@ class UpdateTableCommand extends Command
     //         'DateTime' => ['type' => 'DATETIME', 'nullable' => true],
     //     ];
 
-    //     return $map[$phpType] ?? ['type' => 'TEXT', 'nullable' => true];
+    //     return isset($map[$phpType]) ? $map[$phpType] : array('type' => 'TEXT', 'nullable' => true);
     // }
 
     private function inferColumn($phpType, $name)
@@ -147,7 +147,7 @@ class UpdateTableCommand extends Command
             'DateTime' => ['type' => 'DATETIME', 'nullable' => true],
         ];
 
-        return $map[$phpType] ?? ['type' => 'TEXT', 'nullable' => true];
+        return isset($map[$phpType]) ? $map[$phpType] : array('type' => 'TEXT', 'nullable' => true);
     }
 
     private function getColumnSQL($name, $props)

@@ -12,22 +12,23 @@ Route::get('verify', 'AuthController@verify');
 Route::get('profile/{img}', 'AuthController@profile', [new AuthSession("user")]);
 
 // toke controller for qbo
-Route::get('token', 'QBOTokenController@token', [new AuthSession("user")]);
-Route::get('token/generate', 'QBOTokenController@generate', [new AuthSession("user")]);
+Route::get('token', 'QBOServiceController@token', [new AuthSession("user")]);
+Route::get('token/generate', 'QBOServiceController@generate', [new AuthSession("user")]);
 
 // gmmr nonpharmacy
 Route::group(['prefix' => 'nonpharmacy', 'middleware' => [new AuthSession()]], function () {
     // gmmr functions
-    Route::get('list', 'NonPharmaController@index');
+    Route::get('invoices', 'NonPharmaController@index');
     Route::get('edit', 'NonPharmaController@edit');
     Route::get('details', 'NonPharmaController@details');
     Route::post('update', 'NonPharmaController@update');
 
     // for quickbooks functions
-    Route::get('add_qbo', 'NonPharmaController@update_qbo');
-    Route::get('update_qbo', 'NonPharmaController@update_qbo');
-    Route::get('edit_qbo', 'NonPharmaController@edit_qbo');
-    Route::get('delete_qbo', 'NonPharmaController@update_qbo');
+    Route::post('book_invoice', 'NonPharmaController@book_invoice');
+    Route::post('update_invoice', 'NonPharmaController@update_invoice');
+    Route::post('edit_invoice', 'NonPharmaController@edit_invoice');
+    Route::post('delete_invoice', 'NonPharmaController@delete_invoice');
+    Route::post('findInvoice', 'NonPharmaController@findInvoice');
 });
 
 // gmmr pharmacy

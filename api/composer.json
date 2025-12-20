@@ -13,7 +13,8 @@
     "vlucas/phpdotenv": "^5.6",
     "symfony/console": "^5.4",
     "felconca/session-cookies-manager": "^1.0",
-    "felconca/redis-cache": "^1.0"
+    "felconca/redis-cache": "^1.0",
+    "felconca/qbo-helpers": "^1.1"
   },
   "autoload": {
     "psr-4": {

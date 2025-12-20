@@ -29,10 +29,10 @@ class CreateTableCommand extends Command
 
         $this->loadEnv();
 
-        $host = $_ENV['DB_HOST'] ?? 'localhost';
-        $user = $_ENV['DB_USER'] ?? 'root';
-        $pass = $_ENV['DB_PASSWORD'] ?? '';
-        $collation = $_ENV['DB_COLLATION'] ?? 'utf8mb4_unicode_ci';
+        $host = isset($_ENV['DB_HOST']) ? $_ENV['DB_HOST'] : 'localhost';
+        $user = isset($_ENV['DB_USER']) ? $_ENV['DB_USER'] : 'root';
+        $pass = isset($_ENV['DB_PASSWORD']) ? $_ENV['DB_PASSWORD'] : '';
+        $collation = isset($_ENV['DB_COLLATION']) ? $_ENV['DB_COLLATION'] : 'utf8mb4_unicode_ci';
         $charset = explode('_', $collation)[0];
 
         $mysqli = new mysqli($host, $user, $pass, $database);
@@ -110,7 +110,7 @@ class CreateTableCommand extends Command
     //         'DateTime' => ['type' => 'DATETIME', 'nullable' => true],
     //     ];
 
-    //     return $map[$phpType] ?? ['type' => 'TEXT', 'nullable' => true];
+    //          return isset($map[$phpType]) ? $map[$phpType] : ['type' => 'TEXT', 'nullable' => true];
     // }
 
 
@@ -132,7 +132,7 @@ class CreateTableCommand extends Command
             'DateTime' => ['type' => 'DATETIME', 'nullable' => true],
         ];
 
-        return $map[$phpType] ?? ['type' => 'TEXT', 'nullable' => true];
+        return isset($map[$phpType]) ? $map[$phpType] : ['type' => 'TEXT', 'nullable' => true];
     }
 
 

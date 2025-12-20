@@ -12,3 +12,5 @@
 [2025-12-13 09:05:01] ERROR: No connection found for 'ipadrbg'
 [2025-12-13 09:06:23] ERROR: Connection failed to ipadrgb: Unknown database 'ipadrgb'
 [2025-12-13 09:06:23] ERROR: Attempted to call undefined method or connection: ipadrbg
+[2025-12-19 10:07:01] ERROR: Connection failed to ipadrbg: Unknown database 'ipadrbg'
+[2025-12-19 10:07:01] ERROR: Connection failed to wgcentralsupply: Unknown database 'wgcentralsupply'

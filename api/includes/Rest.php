@@ -4,9 +4,10 @@ namespace Includes;
 
 class Rest
 {
-    protected $_allow = [];
+    // Use array() for PHP 5.6 compatibility
+    protected $_allow = array();
     protected $_content_type = "application/json";
-    protected $_request = [];
+    protected $_request = array();
     private $_method = "";
     private $_code = 200;
     private $userData = null;
@@ -21,7 +22,40 @@ class Rest
         $this->_code = $status;
         $this->set_headers();
 
-        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        // Numbers (including float) and boolean are encoded as such in json_encode,
+        // but if you want 500.00 (float) instead of "500", ensure your data uses correct types.
+        // However, json_encode cannot force trailing .00 (will output 500 not 500.00).
+        // To avoid quoted numbers/booleans, cast them before encoding.
+        // Here, force correct types recursively.
+
+        function ensureProperTypes($item)
+        {
+            if (is_array($item)) {
+                foreach ($item as $k => $v) {
+                    $item[$k] = ensureProperTypes($v);
+                }
+                return $item;
+            }
+            // Try to detect booleans (but not 0/1 strings)
+            if ($item === "true") return true;
+            if ($item === "false") return false;
+
+            // Try to detect integer
+            if (is_string($item) && ctype_digit($item)) {
+                return (int)$item;
+            }
+            // Try to detect float
+            if (
+                is_string($item) && is_numeric($item) &&
+                strpos($item, '.') !== false
+            ) {
+                return (float)$item;
+            }
+            return $item;
+        }
+
+        $data = ensureProperTypes($data);
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
         exit;
     }
 
@@ -38,7 +72,8 @@ class Rest
 
     private function get_status_message()
     {
-        $status = [
+        // Use array() for PHP 5.6 compatibility
+        $status = array(
             200 => 'OK',
             201 => 'Created',
             204 => 'No Content',
@@ -48,8 +83,9 @@ class Rest
             405 => 'Method Not Allowed',
             406 => 'Not Acceptable',
             500 => 'Internal Server Error' // Added 500
-        ];
-        return $status[$this->_code] ?? 'Unknown Status';
+        );
+        // Use isset to avoid undefined index notice
+        return isset($status[$this->_code]) ? $status[$this->_code] : 'Unknown Status';
     }
 
     public function get_request_method()
@@ -74,19 +110,21 @@ class Rest
                 $rawInput = file_get_contents("php://input");
                 if (!empty($rawInput)) {
                     if (stripos($contentType, 'application/json') !== false) {
-                        $this->_request = json_decode($rawInput, true) ?? [];
+                        // Use old PHP json_decode fallback
+                        $decoded = json_decode($rawInput, true);
+                        $this->_request = $decoded ? $decoded : array();
                     } elseif (stripos($contentType, 'application/x-www-form-urlencoded') !== false) {
                         parse_str($rawInput, $this->_request);
                         $this->_request = $this->cleanInputs($this->_request);
                     } else {
-                        $this->_request = ['raw' => $this->cleanInputs($rawInput)];
+                        $this->_request = array('raw' => $this->cleanInputs($rawInput));
                     }
                 }
             }
         }
 
         if (empty($this->_request)) {
-            $this->_request = [];
+            $this->_request = array();
         }
 
         return $this->_request;
@@ -95,7 +133,8 @@ class Rest
     private function cleanInputs($data)
     {
         if (is_array($data)) {
-            return array_map([$this, 'cleanInputs'], $data);
+            // Use array for PHP 5.6
+            return array_map(array($this, 'cleanInputs'), $data);
         }
         return trim(strip_tags(stripslashes($data)));
     }

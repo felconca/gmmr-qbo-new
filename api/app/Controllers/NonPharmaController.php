@@ -2,9 +2,12 @@
 
 namespace App\Controllers;
 
+use App\Services\InvoicesService;
+use App\Services\QboCustomerService;
+use App\Services\QboEntityService;
 use Includes\Rest;
 use Core\Database\Database;
-use Error;
+use QuickBooksOnlineHelper\Facades\QBO;
 
 class NonPharmaController extends Rest
 {
@@ -24,6 +27,9 @@ class NonPharmaController extends Rest
         parent::__construct();
 
         $this->db = new Database();
+        $this->clientId = isset($_ENV["QBO_CLIENTID"]) ? $_ENV["QBO_CLIENTID"] : NULL;
+        $this->secretId = isset($_ENV["QBO_SECRETID"]) ? $_ENV["QBO_SECRETID"] : NULL;
+        $this->companyId = isset($_ENV["QBO_COMPANYID"]) ? $_ENV["QBO_COMPANYID"] : NULL;
     }
 
     public function index($request, $response, $params)
@@ -32,8 +38,8 @@ class NonPharmaController extends Rest
             $input = $request->validate([
                 "start_dt" => "required|date",
                 "end_dt" => "required|date",
-                "isbooked" => "required|int:min:1",
-                "status" => "required|number:min:1",
+                "isbooked" => "required|numeric:min:1",
+                "status" => "required|numeric:min:1",
             ]);
             $start_dt = $input['start_dt'];
             $end_dt = $input['end_dt'];
@@ -46,18 +52,23 @@ class NonPharmaController extends Rest
                     'p.PxRID AS pxid',
                     "p.TranDate AS trandate",
                     "p.sent_to_qbo AS sent_status",
+                    "p.sent_to_qbo_id AS sent_id",
+                    "p.sent_to_qbo_date AS sent_date",
+                    "p.sent_to_qbo_amt AS booked_amt",
+                    "p.sent_to_qbo_update_amt AS updated_amt",
+                    "p.TranStatus AS tstatus",
+
                     "SUM(pd.line_Discount) AS ldiscount",
                     "SUM(pd.DiscountApplied) AS discount",
                     "SUM(pd.line_netofvat) AS netofvat",
                     "SUM(pd.VatAmnt) AS vat",
                     "SUM(pd.GrossLine) AS gross",
                     "SUM(pd.ExtendAmount) AS netamount",
-                    "p.TranStatus AS tstatus",
 
-                    "px.LastName AS pxlname",
-                    "px.MiddleName AS pxmname",
-                    "px.FirstName AS pxfname",
-                    "px.namesuffix AS suffix",
+                    "IFNULL(px.LastName, '') AS lname",
+                    "IFNULL(px.MiddleName, '') AS mname",
+                    "IFNULL(px.FirstName, '') AS fname",
+                    "IFNULL(px.namesuffix, '') AS suffix",
 
                     "CONCAT(px.LastName, ', ', px.FirstName) AS lnamefirst",
                     "CONCAT(px.FirstName, ', ', px.LastName) AS fnamefirst",
@@ -102,6 +113,7 @@ class NonPharmaController extends Rest
     public function edit($request, $response, $params)
     {
         try {
+            $invoiceService = new InvoicesService($this->db->wgcentralsupply());
             $input = $request->validate([
                 "id" => "required",
             ]);
@@ -134,7 +146,7 @@ class NonPharmaController extends Rest
                 ->LEFTJOIN("lkup_transtatus_f ltf", "ltf.TranStatusF = p.TranStatus")
                 ->WHERE(["p.TranRID" => $input['id']])->first();
             if ($invoice) {
-                $details = $this->details($request, $response, $params);
+                $details = $invoiceService->details($input["id"]);
                 if ($details) {
                     $data = [
                         "invoice" => $invoice,
@@ -158,16 +170,18 @@ class NonPharmaController extends Rest
                 "tranid" => "required",
                 "qboid" => "required",
                 "amount" => "required|double|min:1",
+                "status" => "required",
             ]);
             $tranid = $input["tranid"];
             $qboid = $input["qboid"];
             $amount = $input["amount"];
+            $status = $input["status"];
             $timestamp = date("Y-m-d H:i:s");
 
             $invoice = $this->db->wgcentralsupply()
                 ->update('possales', [
                     "sent_to_qbo_amt" => $amount,
-                    "sent_to_qbo" => 1,
+                    "sent_to_qbo" => $status,
                     "sent_to_qbo_id" => $qboid,
                     "sent_to_qbo_date" => $timestamp
                 ])->WHERE(["TranRID" => $tranid]);
@@ -181,44 +195,312 @@ class NonPharmaController extends Rest
             return $response(["status" => 400, "error" => $e->getMessage()], 400);
         }
     }
-    private function details($request, $response, $params)
+
+    // qbo functions
+    public function book_invoice($request, $response, $params)
     {
         try {
+            $qboService = new QboCustomerService($this->db, $this->companyId);
+            $invoiceService = new InvoicesService($this->db->wgcentralsupply());
+
             $input = $request->validate([
-                "id" => "required",
+                "data"             => "required|array|min:1",
+                "token"            => "required",
+                'data.*.tranid'    => 'required|int|min:1',
+                'data.*.pxid'      => 'required|int|min:1',
+                'data.*.docnumber' => 'required|string',
+                'data.*.txndate'   => 'required|date',
+                'data.*.amount'    => 'required|float',
+                'data.*.gtaxcalc'  => 'required|string',
+                'data.*.customerref' => 'numeric',
+                'data.*.fname'       => 'required|string',
+                'data.*.lname'       => 'required|string',
+                'data.*.qbostatus'   => 'numeric',
+                'data.*.qboid'       => 'numeric',
+                'data.*.memo'        => 'string',
+                'data.*.gstatus'     => 'string',
+                'data.*.mname'       => 'string',
+                'data.*.suffix'      => 'string',
             ]);
-            $items = $this->db->wgcentralsupply()
-                ->SELECT(
-                    "pd.TranRID AS tranid,
-                    pd.OrderDetailRID AS orderid,
-                    pd.ProductRID AS productid,
-                    pd.SalesTaxRID AS taxid,
-                    pr.`Description` AS descriptions,
-                    pd.VatAmnt AS vat,
-                    pd.line_Discount AS ldiscount,
-                    pd.DiscountApplied AS discount,
-                    pd.SoldPrice AS price,
-                    pd.SoldQty AS qty,
-                    pd.GrossLine AS gross,
-                    pr.DeptCode AS codes,
-                    ROUND(pd.UnitCost, 2) AS cost,
-                    pd.line_netofvat AS netofvat,
-                    pd.ExtendAmount AS netamount,
-                    cx.qbo_inv_id AS invid,
-                    cx.qbo_cost_id AS costid,
-                    cx.qbo_items_id AS itemid",
-                    "possales_details pd"
-                )
-                ->LEFTJOIN("product pr", "pr.ProductRID = pd.ProductRID")
-                ->LEFTJOIN("ipadrbg.lkup_centers cx", "cx.centerRID = pd.centerRIDpbr")
-                ->WHERE(["pd.TranRID" => $input['id']])->get();
-            if ($items) {
-                return $items;
-            } else {
-                return [];
+
+            $invoices = $input["data"];
+            $token = $input["token"];
+            $hasErrors = false;
+            $results = [];
+
+            foreach ($invoices as $row) {
+                QBO::setAuth($this->companyId, $token);
+                $updateData = [
+                    "tranid" => $row["tranid"],
+                    "amount" => $row["amount"],
+                    "qboid"  => 0,
+                ];
+
+                try {
+                    $qbo = new QboEntityService($this->db, $this->companyId);
+                    $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
+                    $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
+
+                    $isUpdate = $qboid > 0 && ($qbostatus == 1 || $qbostatus == 2);
+                    $action = $isUpdate ? QBO::update() : QBO::create();
+
+                    $line = $this->line_invoice($row["tranid"]);
+
+                    $customer = isset($row['customerref']) && $row['customerref'] > 0
+                        ? $row['customerref']
+                        : $qboService->createCustomer([
+                            "token"  => $token,
+                            "pxid"   => $row["pxid"],
+                            "fname"  => $row["fname"],
+                            "lname"  => $row["lname"],
+                            "mname" => isset($row["mname"]) ? $row["mname"] : null,
+                            "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
+                        ]);
+
+                    $invoice = [
+                        "DocNumber" => $row["docnumber"],
+                        "TxnDate" => $row["txndate"],
+                        "TotalAmt" => $row["amount"],
+                        "Line" => $line,
+                        "CustomerRef" => ["value" => $customer],
+                        "GlobalTaxCalculation" => $row["gtaxcalc"],
+                        "CustomerMemo" => ["value" => isset($row['memo']) ? $row['memo'] : ''],
+                        "CustomField" => [
+                            [
+                                "DefinitionId" => "1",
+                                "Name" => "Patient ID",
+                                "Type" => "StringType",
+                                "StringValue" => $row["pxid"]
+                            ],
+                            [
+                                "DefinitionId" => "2",
+                                "Name" => "GMMR Status",
+                                "Type" => "StringType",
+                                "StringValue" => $row["gstatus"]
+                            ]
+                        ],
+                        "domain" => "QBO",
+                        "PrintStatus" => "NeedToPrint",
+                        "CurrencyRef" => ["value" => "PHP", "name" => "Philippine Peso"],
+                    ];
+
+                    if ($isUpdate) {
+                        // FIX: set 'Id' to QBO Invoice id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
+                        $invoice['Id'] = $qboid; // NOT $qbo (service), should be the QBO invoice id
+                        $invoice['sparse'] = true;
+                        $synctoken = $qbo->synctoken($row["qboid"], $token, "Invoice");
+
+                        if ($synctoken) {
+                            $invoice["SyncToken"] = $synctoken['synctoken'];
+                        } else {
+                            // Protect, must have SyncToken for update
+                            throw new \Exception("SyncToken missing for QBO update");
+                        }
+                    }
+
+                    $result = $action->Invoice($invoice);
+
+                    if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
+                        // Mark as failed
+                        $updateData["status"] = 4;
+                        $updateData["qboid"] = $isUpdate ? $qboid : 0;
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "failed",
+                            "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+                        ];
+                        $hasErrors = true;
+                    } else {
+                        // Mark as success
+                        $updateData["status"] = $qboid == 0 ? 1 : 2;
+                        $updateData["qboid"] = isset($result["data"]["Invoice"]["Id"]) ? $result["data"]["Invoice"]["Id"] : ($qboid ?: null);
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "success",
+                            "qboid" => $updateData["qboid"]
+                        ];
+                    }
+
+                    // Always update DB
+                    $invoiceService->update($updateData);
+                } catch (Exception $e) {
+                    // Catch QBO errors / customer creation errors
+                    $updateData["status"] = 4;
+                    $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
+                    $invoiceService->update($updateData);
+
+                    $results[] = [
+                        "tranid" => $row["tranid"],
+                        "status" => "failed",
+                        "error" => $e->getMessage()
+                    ];
+                    $hasErrors = true;
+                }
             }
+
+            // Return overall result
+            return $response([
+                "status" => $hasErrors ? 400 : 200,
+                "results" => $results
+            ], $hasErrors ? 400 : 200);
         } catch (Exception $e) {
-            return $e->getMessage();
+            return $response([
+                "status" => 400,
+                "error" => $e->getMessage()
+            ], 400);
         }
+    }
+    public function delete_invoice($request, $response, $params)
+    {
+        $invoiceService = new InvoicesService($this->db->wgcentralsupply());
+
+        try {
+            $input = $request->validate([
+                "data"               => "required|array|min:1",
+                "token"              => "required",
+                'data.*.tranid'      => 'required|int|min:1',
+                'data.*.qboid'       => 'required',
+            ]);
+
+            $invoices = $input["data"];
+            $token = $input["token"];
+            $results = [];
+            $hasErrors = false;
+
+            foreach ($invoices as $row) {
+                try {
+                    $qbo = new QboEntityService($this->db, $this->companyId);
+                    $synctoken = $qbo->synctoken($row["qboid"], $token, "Invoice");
+                    $deleteResult = QBO::delete()->Invoice($row["qboid"], $synctoken['synctoken']);
+
+                    $updateData = [
+                        "tranid" => $row["tranid"],
+                        "amount" => 0,
+                        "qboid"  => 0,
+                        "status" => 0
+                    ];
+
+                    // Check deleteResult for error handling (assume structure similar to QBO response)
+                    if (
+                        !is_array($deleteResult) ||
+                        !isset($deleteResult['status']) ||
+                        ($deleteResult['status'] !== 200 && $deleteResult['status'] !== 201)
+                    ) {
+                        $hasErrors = true;
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "failed",
+                            "error" => isset($deleteResult['data']) ? $deleteResult['data'] : "Failed to delete in QBO"
+                        ];
+                    } else {
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "success"
+                        ];
+                    }
+
+                    $invoiceService->update($updateData);
+                } catch (\Exception $ex) {
+                    $hasErrors = true;
+                    $results[] = [
+                        "tranid" => $row["tranid"],
+                        "status" => "failed",
+                        "error" => $ex->getMessage()
+                    ];
+                }
+            }
+
+            return $response([
+                "status" => $hasErrors ? 400 : 200,
+                "results" => $results
+            ], $hasErrors ? 400 : 200);
+        } catch (Exception $e) {
+            return $response([
+                "status" => 400,
+                "error" => $e->getMessage()
+            ], 400);
+        }
+    }
+    public function findInvoice($request, $response, $params)
+    {
+        $token = $request["token"];
+        $id = $request["id"];
+        $qbo = new QboEntityService($this->db, $this->companyId);
+        $synctoken = $qbo->synctoken($id, $token, "Invoice");
+        return $response($synctoken, $synctoken['status']);
+    }
+    private function line_invoice($id)
+    {
+        $invoiceService = new InvoicesService($this->db->wgcentralsupply());
+        $details = $invoiceService->details($id);
+
+        $lines = [];
+        $qbo = new QboEntityService($this->db, $this->companyId);
+        $index = 0;
+
+        $grossTotal = 0;
+        $discountTotal = 0;
+        $ldiscountTotal = 0;
+
+        foreach ($details as $list) {
+            // Ensure $list is an array, not an object (stdClass)
+            if (is_object($list)) {
+                $list = (array)$list;
+            }
+
+            $lines[] = [
+                "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+                "DetailType" => "SalesItemLineDetail",
+                "SalesItemLineDetail" => [
+                    "TaxInclusiveAmt" => isset($list["gross"]) ? $list["gross"] : 0,
+                    "ItemRef" => ["value" => $qbo->radio(isset($list["codes"]) ? $list["codes"] : 0, isset($list["itemid"]) ? $list["itemid"] : 0)],
+                    "TaxCodeRef" => [
+                        "value" => (isset($list["vat"]) && $list["vat"] > 0) ? $qbo->vat("vat-s") : $qbo->vat("vat-ex")
+                    ],
+                    "Qty" => isset($list["qty"]) ? $list["qty"] : 1,
+                    "UnitPrice" => (isset($list["vat"]) && $list["vat"] > 0)
+                        ? (isset($list["price"]) && $list["price"] ? ($list["price"] / 1.12) : 0)
+                        : (isset($list["price"]) ? $list["price"] : 0),
+                    "DiscountAmt" => (isset($list["ldiscount"]) ? $list["ldiscount"] : 0) + (isset($list["discount"]) ? $list["discount"] : 0),
+                ],
+                "LineNum" => $index + 1,
+                "Amount" => (isset($list["vat"]) && $list["vat"] > 0)
+                    ? (isset($list["gross"]) && $list["gross"] ? ($list["gross"] / 1.12) : 0)
+                    : (isset($list["gross"]) ? $list["gross"] : 0),
+            ];
+            $index++;
+
+            // Add to totals for subtotal and discounts
+            $grossTotal += isset($list["gross"]) ? $list["gross"] : 0;
+            $discountTotal += isset($list["discount"]) ? $list["discount"] : 0;
+            $ldiscountTotal += isset($list["ldiscount"]) ? $list["ldiscount"] : 0;
+        }
+
+        // Add subtotal line
+        $lines[] = [
+            "LineNum" => count($details) + 1,
+            "Description" => "Subtotal: PHP{$grossTotal}",
+            "DetailType" => "DescriptionOnly",
+            "DescriptionLineDetail" => ["TaxCodeRef" => ["value" => $qbo->vat("vat-ex")]],
+        ];
+
+        // Add discount line
+        $discountSum = $discountTotal + $ldiscountTotal;
+        if ($discountSum != 0) {
+            $lines[] = [
+                "Description" => "Line Discount & 20% Discount",
+                "DetailType" => "SalesItemLineDetail",
+                "SalesItemLineDetail" => [
+                    "TaxCodeRef" => ["value" => $qbo->discountvat()],
+                    "Qty" => 0,
+                    "UnitPrice" => 0 - $discountSum,
+                    "ItemRef" => ["value" => $qbo->discount(), "name" => "Discount"],
+                ],
+                "LineNum" => count($details) + 2,
+                "Amount" => 0 - $discountSum,
+            ];
+        }
+
+        return $lines;
     }
 }
