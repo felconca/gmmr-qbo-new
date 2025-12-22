@@ -246,16 +246,20 @@ class NonPharmaController extends Rest
 
                     $line = $this->line_invoice($row["tranid"]);
 
-                    $customer = isset($row['customerref']) && $row['customerref'] > 0
-                        ? $row['customerref']
-                        : $qboService->createCustomer([
+                    if (isset($row['pxid']) && $row['pxid'] == 0) {
+                        $customer = 530;
+                    } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
+                        $customer = $row['customerref'];
+                    } else {
+                        $customer = $qboService->createCustomer([
                             "token"  => $token,
                             "pxid"   => $row["pxid"],
                             "fname"  => $row["fname"],
                             "lname"  => $row["lname"],
-                            "mname" => isset($row["mname"]) ? $row["mname"] : null,
+                            "mname"  => isset($row["mname"]) ? $row["mname"] : null,
                             "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
                         ]);
+                    }
 
                     $invoice = [
                         "DocNumber" => $row["docnumber"],

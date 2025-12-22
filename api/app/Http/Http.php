@@ -16,7 +16,7 @@ Route::get('token', 'QBOServiceController@token', [new AuthSession("user")]);
 Route::get('token/generate', 'QBOServiceController@generate', [new AuthSession("user")]);
 
 // gmmr nonpharmacy
-Route::group(['prefix' => 'nonpharmacy', 'middleware' => [new AuthSession()]], function () {
+Route::group(['prefix' => 'nonpharmacy', 'middleware' => [new AuthSession("user")]], function () {
     // gmmr functions
     Route::get('invoices', 'NonPharmaController@index');
     Route::get('edit', 'NonPharmaController@edit');
@@ -32,7 +32,7 @@ Route::group(['prefix' => 'nonpharmacy', 'middleware' => [new AuthSession()]], f
 });
 
 // gmmr pharmacy
-Route::group(['prefix' => 'pharmacy', 'middleware' => [new AuthSession()]], function () {
+Route::group(['prefix' => 'pharmacy', 'middleware' => [new AuthSession("user")]], function () {
     // gmmr functions
     Route::get('list', 'PharmacyController@index');
     Route::get('edit', 'PharmacyController@edit');
@@ -45,7 +45,7 @@ Route::group(['prefix' => 'pharmacy', 'middleware' => [new AuthSession()]], func
     Route::get('delete_qbo', 'PharmacyController@update_qbo');
 });
 // gmmr professional fees
-Route::group(['prefix' => 'pf', 'middleware' => [new AuthSession()]], function () {
+Route::group(['prefix' => 'pf', 'middleware' => [new AuthSession("user")]], function () {
     // gmmr functions
     Route::get('list', 'ProfessionalFeeController@index');
     Route::get('edit', 'ProfessionalFeeController@edit');
