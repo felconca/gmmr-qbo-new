@@ -29,12 +29,11 @@ angular.module("app").controller("authCtrl", function ($scope, AuthService) {
       })
       .catch(function () {
         vm.isloading = false;
-        Toasty.showToast(
-          "Authentication Error",
-          `Invalid email or password!`,
-          `<i class="ph-fill ph-x-circle text-danger"></i>`,
-          3000
-        );
+        ToastService.show({
+          title: "Authentication Error",
+          message: "Invalid username or password!",
+          position: "top-center",
+        });
       });
   };
 });

@@ -381,7 +381,7 @@ class NonPharmaController extends Rest
                         "tranid" => $row["tranid"],
                         "amount" => 0,
                         "qboid"  => 0,
-                        "status" => 0
+                        "status" => 5
                     ];
 
                     // Check deleteResult for error handling (assume structure similar to QBO response)
@@ -425,7 +425,7 @@ class NonPharmaController extends Rest
             ], 400);
         }
     }
-    public function findInvoice($request, $response, $params)
+    public function find_invoice($request, $response, $params)
     {
         $token = $request["token"];
         $id = $request["id"];

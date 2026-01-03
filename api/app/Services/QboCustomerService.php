@@ -41,6 +41,7 @@ class QboCustomerService
         $localResult = null;
         if (!empty($pxid)) {
             $localResult = $this->checkPatient($pxid);
+            $localResult = (array)$localResult;
             if ($localResult && isset($localResult['customerref']) && (int)$localResult['customerref'] > 0) {
                 return (int)$localResult['customerref'];
             }

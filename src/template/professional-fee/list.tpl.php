@@ -1,7 +1,7 @@
  <div class="d-flex justify-content-between">
      <div>
          <breadcrumbs></breadcrumbs>
-         <h4 class="fw-semibold text-dark mb-0">NonPharmacy Sales</h4>
+         <h4 class="fw-semibold text-dark mb-0">Professional Fee Sales</h4>
      </div>
      <div class="d-flex justify-content-end align-items-center">
          <div class="d-flex align-items-center" style="gap:10px">
@@ -42,19 +42,6 @@
                      <option ng-value="5">Unbooked</option>
                  </select>
              </div>
-             <div class="filter-input w-50">
-
-                 <span>GMMR Status</span>
-                 <select class="input-form" ng-model="filtered.status" ng-disabled="isFiltering || isSending">
-                     <option ng-value="0">All GMMR Status</option>
-                     <option ng-value="1">Radiology Sales</option>
-                     <option ng-value="4">Med-OPD</option>
-                     <option ng-value="5">Med-InPatient</option>
-                     <option ng-value="6">Laboratory</option>
-                     <option ng-value="16">General Sales</option>
-                     <option ng-value="21">PT Charges</option>
-                 </select>
-             </div>
              <div class="filter-input w-25">
                  <span>Date From:</span>
                  <input type="date" class="input-form" ng-model="filtered.startDate" date-input ng-disabled="isFiltering || isSending">
@@ -85,7 +72,7 @@
                  <th width="1%" nowrap>Ref. No.</th>
                  <th nowrap>Patients</th>
                  <th width="10%">Created By</th>
-                 <th width="10%">GMMR Status</th>
+                 <!-- <th width="10%">Doctors</th> -->
                  <th class="text-center" width="10%">Status</th>
                  <th class="text-start" width="10%" nowrap>Last Booked</th>
                  <th class="text-end" width="5%" nowrap>Amount</th>
@@ -106,14 +93,14 @@
                  </td>
                  <td nowrap>
                      <div class="d-flex align-items-center">
-                         <a tooltip="Mapped to qbo customer" flow="right">
-                             <i class="ph-fill ph-seal-check text-success me-2" ng-if="items.qbopx > 0"></i>
-                         </a>
-                         {{items.fname}} {{items.mname.substring(0, 1)}}. {{items.lname}} {{items.suffix}}
+                         <i class="ph-fill ph-seal-check text-success me-2" ng-if="items.qbopx > 0"></i>
+                         <span tooltip="Mapped to qbo customer" flow="down">
+                             {{items.fname}} {{items.mname.substring(0, 1)}}. {{items.lname}} {{items.suffix}}
+                         </span>
                      </div>
                  </td>
                  <td nowrap>{{items.ufname.substring(0, 1)}}. {{items.ulname}}</td>
-                 <td nowrap>{{items.transtatus}}</td>
+                 <!-- <td nowrap>{{items.transtatus}}</td> -->
                  <td nowrap class="text-center">
                      <span class="status {{ sentStatusClass(items.sent_status) }}">{{ sentStatus(items.sent_status) }}</span>
                  </td>
@@ -158,7 +145,7 @@
          </tbody>
          <tfoot class="position-sticky bottom-0" ng-hide="isFiltering || isSending">
              <tr>
-                 <td colspan="8" class="fw-bold">Total</td>
+                 <td colspan="7" class="fw-bold">Total</td>
                  <td class="fw-bold text-end">{{getTotal(searched, 'netamount') | number:2}}</td>
                  <td class="fw-bold text-end">{{getTotal(searched, 'booked_amt') | number:2}}</td>
                  <td class="fw-bold text-end">{{getTotal(searched, 'updated_amt') | number:2}}</td>

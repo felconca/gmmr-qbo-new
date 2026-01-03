@@ -256,7 +256,7 @@ angular
       1: { label: "Booked", class: "sent" },
       2: { label: "Modified", class: "modified" },
       4: { label: "Failed", class: "failed" },
-      5: { label: "Unbooked", class: "not-sent" },
+      5: { label: "Unbooked", class: "unbooked" },
     };
 
     /**

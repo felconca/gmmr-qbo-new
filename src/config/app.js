@@ -91,6 +91,17 @@ angular
         },
         data: { breadcrumb: "NonPharma Sales", pageTitle: "GMMR-QBO | Non-Pharma" },
       });
+      $stateProvider.state("app.professional-fee", {
+        url: "/professional-fee",
+        templateUrl: "src/template/professional-fee/list.tpl.php",
+        controller: "professionalFeeCtrl",
+        resolve: {
+          loadCtrl: function ($ocLazyLoad) {
+            return $ocLazyLoad.load("src/template/professional-fee/professional-fee.ctrl.js");
+          },
+        },
+        data: { breadcrumb: "Professional Fee Sales", pageTitle: "GMMR-QBO | Professional Fee" },
+      });
 
       // set to url to html5
       $locationProvider.html5Mode(true);

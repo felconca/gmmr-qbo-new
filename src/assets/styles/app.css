@@ -994,6 +994,10 @@ option:active {
   background: #e5e7eb;
   color: #374151 !important;
 }
+.unbooked {
+  background: #fff3d3;
+  color: #df9800 !important;
+}
 .modified {
   background: #dbeafe;
   color: #1e40af !important;
