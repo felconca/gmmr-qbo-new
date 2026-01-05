@@ -91,6 +91,17 @@ angular
         },
         data: { breadcrumb: "NonPharma Sales", pageTitle: "GMMR-QBO | Non-Pharma" },
       });
+      $stateProvider.state("app.pharmacy", {
+        url: "/pharmacy",
+        templateUrl: "src/template/pharmacy/list.tpl.php",
+        controller: "pharmacyCtrl",
+        resolve: {
+          loadCtrl: function ($ocLazyLoad) {
+            return $ocLazyLoad.load("src/template/pharmacy/pharmacy.ctrl.js");
+          },
+        },
+        data: { breadcrumb: "Pharmacy Sales", pageTitle: "GMMR-QBO | Pharmacy" },
+      });
       $stateProvider.state("app.professional-fee", {
         url: "/professional-fee",
         templateUrl: "src/template/professional-fee/list.tpl.php",

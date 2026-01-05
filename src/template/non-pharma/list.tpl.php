@@ -138,7 +138,7 @@
                                  </button>
                              </li>
                              <li>
-                                 <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="findInvoice(items.sent_id)">
+                                 <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="findInvoice(items.sent_id)" ng-disabled="items.sent_id == 0">
                                      <i class="ph-bold ph-notebook me-2"></i>QBO Details
                                  </button>
                              </li>

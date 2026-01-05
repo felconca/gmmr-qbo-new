@@ -9,7 +9,7 @@
     <div class="sidebar-menu">
         <ul>
             <li ui-sref-active="active"><a ui-sref="app.non-pharma" ui-sref-opts="{reload: true}"><i class='bx bxs-buildings'></i><span>NonPharma Sales</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="app.pharma" ui-sref-opts="{reload: true}"><i class='bx bxs-capsule'></i><span>Pharmacy Sales</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.pharmacy" ui-sref-opts="{reload: true}"><i class='bx bxs-capsule'></i><span>Pharmacy Sales</span></a></li>
             <li ui-sref-active="active"><a ui-sref="app.professional-fee" ui-sref-opts="{reload: true}"><i class='bx bxs-user-pin'></i><span>Professional Fees</span></a></li>
             <li ui-sref-active="active"><a ui-sref="csreturns" ui-sref-opts="{reload: true}"><i class='bx bxs-direction-right'></i><span>NonPharma Returns</span></a></li>
             <li ui-sref-active="active"><a ui-sref="fsreturns" ui-sref-opts="{reload: true}"><i class='bx bxs-directions'></i><span>Pharmacy Returns</span></a></li>

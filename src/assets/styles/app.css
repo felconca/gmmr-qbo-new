@@ -18,6 +18,7 @@
   color: #212529;
   font-weight: 500;
 }
+
 html {
   height: 100%;
 }
@@ -31,8 +32,8 @@ a {
   color: #017137 !important;
 }
 .link-anchor {
-  text-decoration-line: underline !important; /* Ensures an underline is present */
-  text-decoration-style: dotted !important; /* Changes the style of the underline to dotted */
+  text-decoration-line: underline !important;
+  text-decoration-style: dotted !important;
   padding: 0;
   margin: 0;
   color: inherit;

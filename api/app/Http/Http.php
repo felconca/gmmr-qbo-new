@@ -30,19 +30,20 @@ Route::group(['prefix' => 'nonpharmacy', 'middleware' => [new AuthSession("user"
     Route::post('delete_invoice', 'NonPharmaController@delete_invoice');
     Route::post('find_invoice', 'NonPharmaController@find_invoice');
 });
-
 // gmmr pharmacy
 Route::group(['prefix' => 'pharmacy', 'middleware' => [new AuthSession("user")]], function () {
     // gmmr functions
-    Route::get('list', 'PharmacyController@index');
+    Route::get('invoices', 'PharmacyController@index');
     Route::get('edit', 'PharmacyController@edit');
     Route::get('details', 'PharmacyController@details');
     Route::post('update', 'PharmacyController@update');
+
     // for quickbooks functions
-    Route::get('add_qbo', 'PharmacyController@update_qbo');
-    Route::get('update_qbo', 'PharmacyController@update_qbo');
-    Route::get('edit_qbo', 'PharmacyController@edit_qbo');
-    Route::get('delete_qbo', 'PharmacyController@update_qbo');
+    Route::post('book_invoice', 'PharmacyController@book_invoice');
+    Route::post('update_invoice', 'PharmacyController@update_invoice');
+    Route::post('edit_invoice', 'PharmacyController@edit_invoice');
+    Route::post('delete_invoice', 'PharmacyController@delete_invoice');
+    Route::post('find_invoice', 'PharmacyController@find_invoice');
 });
 // gmmr professional fees
 Route::group(['prefix' => 'pf', 'middleware' => [new AuthSession("user")]], function () {

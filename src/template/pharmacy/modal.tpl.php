@@ -13,9 +13,12 @@
         <div class="col-lg-4">
             <div class="modal-info-text">
                 <span>Patient Name</span>
-                <div>
+                <div ng-if="invoiceInfo.pxid > 0">
                     <strong>{{invoiceInfo.pxid}}</strong>: {{invoiceInfo.pxfname}} {{invoiceInfo.pxmname}}
                     {{invoiceInfo.pxlname}} {{invoiceInfo.suffix}}
+                </div>
+                <div ng-if="invoiceInfo.pxid == 0">
+                    Walk-In Patient
                 </div>
             </div>
         </div>
@@ -44,33 +47,42 @@
                 <thead>
                     <tr>
                         <th>Description</th>
+                        <th class="text-end" width="8%" nowrap>Cost</th>
                         <th class="text-end" width="8%" nowrap>Price</th>
                         <th class="text-end" width="8%" nowrap>Qty</th>
                         <th class="text-end" width="8%" nowrap>Gross Amt</th>
                         <th class="text-end" width="8%" nowrap>Line</th>
                         <th class="text-end" width="8%" nowrap>SR/PWD.</th>
+                        <th class="text-end" width="8%" nowrap>Vat Amt</th>
+                        <th class="text-end" width="8%" nowrap>Net Of Vat</th>
                         <th class="text-end" width="8%" nowrap>Net Amt</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr ng-repeat="list in invoiceDetails">
                         <td class="text-muted">{{list.descriptions}}</td>
+                        <td class="text-end text-muted">{{list.cost | number:2}}</td>
                         <td class="text-end text-muted">{{list.price | number:2}}</td>
                         <td class="text-end text-muted">{{list.qty | number:2}}</td>
                         <td class="text-end text-muted">{{list.gross | number:2}}</td>
                         <td class="text-end text-muted">{{list.ldiscount | number:2}}</td>
                         <td class="text-end text-muted">{{list.discount | number:2}}</td>
+                        <td class="text-end text-muted">{{list.vat | number:2}}</td>
+                        <td class="text-end text-muted">{{list.netofvat | number:2}}</td>
                         <td class="text-end text-muted">{{list.netamount | number:2}}</td>
                     </tr>
                 </tbody>
                 <tfoot>
                     <tr>
                         <th>Total</th>
+                        <th class="text-end">{{getTotal(invoiceDetails, 'cost') | number:2}}</th>
                         <th class="text-end">{{getTotal(invoiceDetails, 'price') | number:2}}</th>
                         <th class="text-end">{{getTotal(invoiceDetails, 'qty') | number:2}}</th>
                         <th class="text-end">{{getTotal(invoiceDetails, 'gross') | number:2}}</th>
                         <th class="text-end">{{getTotal(invoiceDetails, 'ldiscount') | number:2}}</th>
                         <th class="text-end">{{getTotal(invoiceDetails, 'discount') | number:2}}</th>
+                        <th class="text-end">{{getTotal(invoiceDetails, 'vat') | number:2}}</th>
+                        <th class="text-end">{{getTotal(invoiceDetails, 'netofvat') | number:2}}</th>
                         <th class="text-end">{{getTotal(invoiceDetails, 'netamount') | number:2}}</th>
                     </tr>
                 </tfoot>

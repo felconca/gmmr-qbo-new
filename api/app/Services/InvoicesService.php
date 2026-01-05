@@ -40,7 +40,7 @@ class InvoicesService
 
         return  $this->conn->update("possales", $update)->WHERE(["TranRID" => $tranid]);
     }
-    public function details($id)
+    public function nonpharma_line($id)
     {
         $items = $this->conn->SELECT(
             "pd.TranRID AS tranid,
@@ -72,7 +72,39 @@ class InvoicesService
             return [];
         }
     }
-    public function pf($id)
+    public function pharmacy_line($id)
+    {
+        $items = $this->conn->SELECT(
+            "pd.TranRID AS tranid,
+            pd.OrderDetailRID AS orderid,
+            pd.ProductRID AS productid,
+            pd.SalesTaxRID AS taxid,
+            pr.`Description` AS descriptions,
+            pd.VatAmnt AS vat,
+            pd.line_Discount AS ldiscount,
+            pd.DiscountApplied AS discount,
+            pd.SoldPrice AS price,
+            pd.SoldQty AS qty,
+            pd.GrossLine AS gross,
+            pr.DeptCode AS codes,
+            ROUND(pd.UnitCost, 2) AS cost,
+            pd.line_netofvat AS netofvat,
+            pd.ExtendAmount AS netamount,
+            cx.qbo_inv_id AS invid,
+            cx.qbo_cost_id AS costid,
+            cx.qbo_items_id AS itemid",
+            "possales_details pd"
+        )
+            ->LEFTJOIN("product pr", "pr.ProductRID = pd.ProductRID")
+            ->LEFTJOIN("ipadrbg.lkup_centers cx", "cx.centerRID = pd.centerRID")
+            ->WHERE(["pd.TranRID" => $id])->get();
+        if ($items) {
+            return $items;
+        } else {
+            return [];
+        }
+    }
+    public function pf_line($id)
     {
         $items = $this->conn->SELECT(
             "

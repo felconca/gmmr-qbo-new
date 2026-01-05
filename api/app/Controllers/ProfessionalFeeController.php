@@ -141,7 +141,7 @@ class ProfessionalFeeController extends Rest
                 ->LEFTJOIN("lkup_transtatus_f ltf", "ltf.TranStatusF = p.TranStatus")
                 ->WHERE(["p.TranRID" => $input['id']])->first();
             if ($invoice) {
-                $details = $invoiceService->pf($input["id"]);
+                $details = $invoiceService->pf_line($input["id"]);
                 if ($details) {
                     $data = [
                         "invoice" => $invoice,
@@ -399,7 +399,7 @@ class ProfessionalFeeController extends Rest
     private function line_invoice($id)
     {
         $invoiceService = new InvoicesService($this->db->wgcentralsupply());
-        $details = $invoiceService->pf($id);
+        $details = $invoiceService->pf_line($id);
 
         $lines = [];
         $qbo = new QboEntityService($this->db, $this->companyId);

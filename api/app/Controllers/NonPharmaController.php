@@ -146,7 +146,7 @@ class NonPharmaController extends Rest
                 ->LEFTJOIN("lkup_transtatus_f ltf", "ltf.TranStatusF = p.TranStatus")
                 ->WHERE(["p.TranRID" => $input['id']])->first();
             if ($invoice) {
-                $details = $invoiceService->details($input["id"]);
+                $details = $invoiceService->nonpharma_line($input["id"]);
                 if ($details) {
                     $data = [
                         "invoice" => $invoice,
@@ -436,7 +436,7 @@ class NonPharmaController extends Rest
     private function line_invoice($id)
     {
         $invoiceService = new InvoicesService($this->db->wgcentralsupply());
-        $details = $invoiceService->details($id);
+        $details = $invoiceService->nonpharma_line($id);
 
         $lines = [];
         $qbo = new QboEntityService($this->db, $this->companyId);

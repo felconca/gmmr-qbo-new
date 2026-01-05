@@ -89,7 +89,7 @@
 </div>
 <div class="modal-footer">
     <button type="button" class="btn btn-light" ng-click="closeInvoiceModal()">Close</button>
-    <button type="button" ng-if="invoiceInfo.sent_status == 0" class="btn btn-theme-dark" ng-click="handleBookInvoice(invoiceInfo)">
+    <!-- <button type="button" ng-if="invoiceInfo.sent_status == 0" class="btn btn-theme-dark" ng-click="handleBookInvoice(invoiceInfo)">
         Book Invoice
-    </button>
+    </button> -->
 </div>
