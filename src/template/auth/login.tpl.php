@@ -12,11 +12,12 @@
         <div class="pt-3 pb-4 mb-3 px-4 mx-2">
             <h6 class="text-center fw-semibold py-3 text-dark">GMACT | QBO LOGIN</h6>
             <div class="input-form-grp mb-3" ng-disabled="isloading == true">
-                <i class='bx bx-user me-2'></i>
+                <i class="ph-bold ph-user me-2"></i>
                 <input type="text" placeholder="enter username" ng-model="username" ng-disabled="isloading == true">
             </div>
             <div class="input-form-grp mb-3" ng-disabled="isloading == true">
-                <i class='bx bx-key me-2'></i>
+                <i class="ph-bold ph-lock-key-open" ng-if="password !== ''"></i>
+                <i class="ph-bold ph-lock-key me-2" ng-if="password == ''"></i>
                 <input type="password" placeholder="enter password" ng-model="password" ng-disabled="isloading == true">
 
             </div>

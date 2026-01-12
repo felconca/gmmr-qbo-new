@@ -29,6 +29,12 @@ class AuthController extends Rest
     {
         return $response(['message' => 'AuthController index'], 200);
     }
+    /**
+     * Handle login. Does NOT set a custom session timeout; uses PHP's default.
+     *
+     * By default, PHP session timeout is controlled by `session.gc_maxlifetime` in php.ini (usually 1440 seconds = 24 mins).
+     * No explicit expiry/time handling is done here; session duration follows server setting unless managed elsewhere.
+     */
     public function login($request, $response, $params)
     {
         try {
@@ -53,16 +59,24 @@ class AuthController extends Rest
 
             if ($users) {
                 $user = $users;
+
+                ini_set('session.gc_maxlifetime', 1800);
+                session_set_cookie_params(1800);
                 session_name($_ENV['AUTH_SESSION_NAME']); // unique, branded
+
                 if (session_status() === PHP_SESSION_NONE) {
                     session_start();
+                    $_SESSION['LAST_ACTIVITY'] = time();
                 }
 
-                // 🧨 Clear pre-login session (if any)
+                // Clear any previous session data
                 session_unset();
                 session_destroy();
-                session_start(); // start fresh
+                session_start();
                 session_regenerate_id(true);
+
+                // No explicit session timeout management here;
+                // uses PHP default lifetime settings.
 
                 // Store user info in session
                 $_SESSION["user"] = [
@@ -85,18 +99,30 @@ class AuthController extends Rest
                 $error = array('status' => "error", "msg" => "Invalid username or password!");
                 return $response($error, 401);
             }
-
-            // always close connection that is only use once or the request are not get
-            $stmt->close();
-            $conn->close();
         } catch (Exception $e) {
             return $response(["status" => 400, "error" => $e->getMessage()], 400);
         }
     }
+    /**
+     * API endpoint to verify if a user has a valid, active session (is authenticated).
+     * 
+     * HOW TO USE:
+     * - Make a request (typically GET or POST) to the /auth/verify API endpoint.
+     * - Your client (browser/app) must include the session cookie (sent automatically by browser or set manually).
+     * - The endpoint will check if a session is active, refresh activity timeout, and return the user context if logged in.
+     * 
+     * Expected Results:
+     * - 200 OK with user session info if authenticated.
+     * - 401 Unauthorized if no active session or session expired.
+     * 
+     * Example (using fetch):
+     *   fetch('/api/auth/verify', {credentials: 'include'})
+     *     .then(r => r.json()).then(console.log)
+     */
     public function verify($request, $response, $params)
     {
-        session_name($_ENV['AUTH_SESSION_NAME']); // unique, branded
-        // Only start session if cookie exists
+        session_name($_ENV['AUTH_SESSION_NAME']);
+
         if (!isset($_COOKIE[session_name()])) {
             return $response(["status" => 401, "error" => "No active session"], 401);
         }
@@ -105,36 +131,35 @@ class AuthController extends Rest
             session_start();
         }
 
-        $timeout = 3600;          // 30 mins inactivity
-        $absoluteLifetime = 3600; // 1 hour max
+        $timeout = 1800; // 30 minutes
 
-        if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > $timeout)) {
+        if (
+            isset($_SESSION['LAST_ACTIVITY']) &&
+            (time() - $_SESSION['LAST_ACTIVITY']) > $timeout
+        ) {
             session_unset();
             session_destroy();
             setcookie(session_name(), '', time() - 3600, '/');
-            return $response(["status" => 401, "error" => "Session expired (inactive)"], 401);
+
+            return $response(["status" => 401, "error" => "Session expired"], 401);
         }
 
-        $_SESSION['LAST_ACTIVITY'] = time();
 
-        if (!isset($_SESSION['CREATED'])) {
-            $_SESSION['CREATED'] = time();
-        } elseif (time() - $_SESSION['CREATED'] > $absoluteLifetime) {
-            session_unset();
-            session_destroy();
-            setcookie(session_name(), '', time() - 3600, '/');
-            return $response(["status" => 401, "error" => "Session expired (max lifetime)"], 401);
-        }
-
-        if (isset($_SESSION["user"])) {
-            return $response([
-                "status" => 200,
-                "user" => $_SESSION["user"]
-            ], 200);
-        } else {
+        // User must exist
+        if (!isset($_SESSION['user'])) {
             return $response(["status" => 401, "error" => "Not logged in"], 401);
         }
+
+        // Refresh activity timestamp (rolling session)
+        $_SESSION['LAST_ACTIVITY'] = time();
+
+        return $response([
+            "status" => 200,
+            "user" => $_SESSION['user'],
+            "session" => $_SESSION['LAST_ACTIVITY']
+        ], 200);
     }
+
     public function profile($request, $response, $params)
     {
         // Define upload directory

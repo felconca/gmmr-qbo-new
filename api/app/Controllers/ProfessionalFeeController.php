@@ -90,6 +90,7 @@ class ProfessionalFeeController extends Rest
                 ->WHERE("p.ApprovedBy = 0")
                 ->WHERE("p.NetAmountDue != 0")
                 ->WHERE("p.TranStatus = 17")
+                ->WHERE("pd.DisLineCanceled = 0")
                 ->WHERE_NOT_IN("p.PxRID", [1993, 1999, 14336])
                 ->WHERE_BETWEEN("p.TranDate", $start_dt, $end_dt);
 
@@ -108,7 +109,7 @@ class ProfessionalFeeController extends Rest
     public function edit($request, $response, $params)
     {
         try {
-            $invoiceService = new InvoicesService($this->db->wgcentralsupply());
+            $invoiceService = new InvoicesService($this->db);
             $input = $request->validate([
                 "id" => "required",
             ]);
@@ -164,7 +165,7 @@ class ProfessionalFeeController extends Rest
     {
         try {
             $qboService = new QboCustomerService($this->db, $this->companyId);
-            $invoiceService = new InvoicesService($this->db->wgcentralsupply());
+            $invoiceService = new InvoicesService($this->db);
 
             $input = $request->validate([
                 "data"             => "required|array|min:1",
@@ -289,12 +290,12 @@ class ProfessionalFeeController extends Rest
                     }
 
                     // Always update DB
-                    $invoiceService->update($updateData);
+                    $invoiceService->update($updateData, wgcentralsupply());
                 } catch (Exception $e) {
                     // Catch QBO errors / customer creation errors
                     $updateData["status"] = 4;
                     $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
-                    $invoiceService->update($updateData);
+                    $invoiceService->update($updateData, wgcentralsupply());
 
                     $results[] = [
                         "tranid" => $row["tranid"],
@@ -319,7 +320,7 @@ class ProfessionalFeeController extends Rest
     }
     public function delete_invoice($request, $response, $params)
     {
-        $invoiceService = new InvoicesService($this->db->wgcentralsupply());
+        $invoiceService = new InvoicesService($this->db);
 
         try {
             $input = $request->validate([
@@ -366,7 +367,7 @@ class ProfessionalFeeController extends Rest
                         ];
                     }
 
-                    $invoiceService->update($updateData);
+                    $invoiceService->update($updateData, wgcentralsupply());
                 } catch (\Exception $ex) {
                     $hasErrors = true;
                     $results[] = [
@@ -398,7 +399,7 @@ class ProfessionalFeeController extends Rest
     }
     private function line_invoice($id)
     {
-        $invoiceService = new InvoicesService($this->db->wgcentralsupply());
+        $invoiceService = new InvoicesService($this->db);
         $details = $invoiceService->pf_line($id);
 
         $lines = [];

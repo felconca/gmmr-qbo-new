@@ -35,12 +35,12 @@ angular
       // Always include cookies with every request (for PHP sessions)
       $httpProvider.defaults.withCredentials = true;
 
-      IdleProvider.idle(60 * 60); // 1hr inactive = sync in backend
+      IdleProvider.idle(1500); // 25 inactive = sync in backend
       IdleProvider.timeout(45); // 45 sec warning before logout
       IdleProvider.autoResume("notIdle");
       KeepaliveProvider.interval(60); // ping every 1 minute
 
-      KeepaliveProvider.http("api/verify");
+      // KeepaliveProvider.http("api/verify");
 
       $stateProvider.state("login", {
         url: "/login",
@@ -68,7 +68,6 @@ angular
           "sidebar@app": { templateUrl: "src/template/components/sidebar.tpl.php" },
         },
       });
-
       $stateProvider.state("app.home", {
         url: "/dashboard",
         templateUrl: "src/template/home/home.tpl.php",
@@ -112,6 +111,30 @@ angular
           },
         },
         data: { breadcrumb: "Professional Fee Sales", pageTitle: "GMMR-QBO | Professional Fee" },
+      });
+
+      // inventory
+      $stateProvider.state("app.pharmacy-inventory", {
+        url: "/pharmacy-inventory",
+        templateUrl: "src/template/inventory/pharmacy.tpl.php",
+        controller: "inventoryCtrl",
+        resolve: {
+          loadCtrl: function ($ocLazyLoad) {
+            return $ocLazyLoad.load("src/template/inventory/inventory.ctrl.js");
+          },
+        },
+        data: { breadcrumb: "Pharmacy Inventory", pageTitle: "GMMR-QBO | Inventory-Pharmacy" },
+      });
+      $stateProvider.state("app.nonpharma-inventory", {
+        url: "/nonpharma-inventory",
+        templateUrl: "src/template/inventory/nonpharma.tpl.php",
+        controller: "inventoryCtrl",
+        resolve: {
+          loadCtrl: function ($ocLazyLoad) {
+            return $ocLazyLoad.load("src/template/inventory/inventory.ctrl.js");
+          },
+        },
+        data: { breadcrumb: "NonPharma Inventory", pageTitle: "GMMR-QBO | Inventory-NonPharma" },
       });
 
       // set to url to html5
@@ -168,11 +191,12 @@ angular
     let idleTimeoutTriggered = false;
 
     $rootScope.$on("IdleStart", function () {
+      Keepalive.stop();
       console.warn("⏳ User is idle");
       idleTimeoutTriggered = false;
       idleWarningAlert = SweetAlert2.fire({
         title: "Inactive Warning",
-        text: "You've been inactive for 1 hour. You will be automatically logged out in 45 seconds unless you continue.",
+        text: "You've been inactive for 25 minutes. You will be automatically logged out after 45 seconds unless you continue.",
         icon: "warning",
         showConfirmButton: true,
         showCancelButton: true,
@@ -231,9 +255,14 @@ angular
       });
     });
 
+    // The AuthService.verify call that happens every minute (based on KeepaliveProvider.interval)
+    // is configured here — on each Keepalive event, the session is verified.
     $rootScope.$on("Keepalive", () => {
-      // Keepalive pings will now fire every interval (by default, every 1 min; verifySession endpoint)
-      // console.log("Keepalive ping");
+      AuthService.verify().catch(() => {
+        Idle.unwatch();
+        Keepalive.stop();
+        $state.go("login");
+      });
     });
 
     // On app bootstrap: verify session and appropriately begin/stop ng-idle & keepalive

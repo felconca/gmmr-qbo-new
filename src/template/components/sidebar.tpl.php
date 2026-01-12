@@ -8,35 +8,87 @@
     </div>
     <div class="sidebar-menu">
         <ul>
-            <li ui-sref-active="active"><a ui-sref="app.non-pharma" ui-sref-opts="{reload: true}"><i class='bx bxs-buildings'></i><span>NonPharma Sales</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="app.pharmacy" ui-sref-opts="{reload: true}"><i class='bx bxs-capsule'></i><span>Pharmacy Sales</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="app.professional-fee" ui-sref-opts="{reload: true}"><i class='bx bxs-user-pin'></i><span>Professional Fees</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="csreturns" ui-sref-opts="{reload: true}"><i class='bx bxs-direction-right'></i><span>NonPharma Returns</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="fsreturns" ui-sref-opts="{reload: true}"><i class='bx bxs-directions'></i><span>Pharmacy Returns</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="cm" ui-sref-opts="{reload: true}"><i class='bx bxs-detail'></i><span>Credit Memo</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="dr" ui-sref-opts="{reload: true}"><i class='bx bxs-detail'></i><span>Debit Memo</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="advances" ui-sref-opts="{reload: true}"><i class='bx bxs-donate-heart'></i><span>Advances/Benefits</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="payments" ui-sref-opts="{reload: true}"><i class='bx bxs-dollar-circle'></i><span>Payments</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="deposits" ui-sref-opts="{reload: true}"><i class='bx bxs-bank'></i><span>For Deposits</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="departments" ui-sref-opts="{reload: true}"><i class='bx bxs-category-alt'></i><span>Departments</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="advances-link" ui-sref-opts="{reload: true}"><i class='bx bxs-buildings'></i><span>Advances Linking</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.home" ui-sref-opts="{reload: true}"><i class="ph-fill ph-squares-four"></i><span>Dashboard</span></a></li>
+        </ul>
+        <div class="text-light small my-2 px-2">
+            Hospital Sales
+        </div>
+        <ul>
+            <li ui-sref-active="active"><a ui-sref="app.non-pharma" ui-sref-opts="{reload: true}"><i class="ph-fill ph-hospital"></i><span>NonPharma Sales</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.pharmacy" ui-sref-opts="{reload: true}"><i class="ph-fill ph-pill"></i><span>Pharmacy Sales</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.professional-fee" ui-sref-opts="{reload: true}"><i class="ph-fill ph-stethoscope"></i><span>Professional Fees</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.nonpharma-rn" ui-sref-opts="{reload: true}"><i class="ph-fill ph-signpost"></i><span>NonPharma Returns</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.pharmacy-rn" ui-sref-opts="{reload: true}"><i class="ph-fill ph-signpost"></i><span>Pharmacy Returns</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.credit-memo" ui-sref-opts="{reload: true}"><i class="ph-fill ph-note"></i><span>Credit Memo</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.debit-memo" ui-sref-opts="{reload: true}"><i class="ph-fill ph-list-plus"></i><span>Debit Memo</span></a></li>
+        </ul>
+        <div class="text-light small my-2 px-2">
+            Claims & Payments
+        </div>
+        <ul>
+
+            <li ui-sref-active="active"><a ui-sref="app.claim-assistant" ui-sref-opts="{reload: true}"><i class="ph-fill ph-person"></i><span>Advances To</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.claim-assistant" ui-sref-opts="{reload: true}"><i class="ph-fill ph-hand-heart"></i><span>Claims & Assistant</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.payments" ui-sref-opts="{reload: true}"><i class="ph-fill ph-wallet"></i><span>Payments</span></a></li>
 
         </ul>
 
-        <div class="divider-text my-3">
-            <div class="divider"></div>
-            <span>QuickBooks Online</span>
-            <div class="divider"></div>
+        <div class="text-light small my-2 px-2">
+            Inventory
+        </div>
+        <ul>
+            <li ui-sref-active="active"><a ui-sref="app.nonpharma-inventory" ui-sref-opts="{reload: true}"><i class="ph-fill ph-package"></i><span>NonPharma Inventory</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.pharmacy-inventory" ui-sref-opts="{reload: true}"><i class="ph-fill ph-package"></i><span>Pharamcy Inventory</span></a></li>
+        </ul>
+
+        <div class="text-light small my-2 px-2">
+            Links & Connections
+        </div>
+        <ul>
+            <li ui-sref-active="active"><a ui-sref="app.departments" ui-sref-opts="{reload: true}"><i class="ph-bold ph-link-simple-horizontal"></i><span>Departments</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.advances-link" ui-sref-opts="{reload: true}"><i class="ph-bold ph-link-simple-horizontal"></i><span>Advances Linking</span></a></li>
+        </ul>
+        <div class="text-light small my-2 px-2">
+            QuickBooks Helpers
         </div>
 
         <ul>
-            <li ui-sref-active="active" ui-sref-opts="{reload: true}"><a ui-sref="qbocustomer"><i class='bx bxs-user-pin'></i><span>Patients</span></a></li>
-            <li ui-sref-active="active" ui-sref-opts="{reload: true}"><a ui-sref="qbovendor"><i class='bx bxs-user-pin'></i><span>Vendors</span></a></li>
-            <li ui-sref-active="active" ui-sref-opts="{reload: true}"><a ui-sref="qboinvoice"><i class='bx bx-globe'></i></i><span>Invoices</span></a></li>
-            <li ui-sref-active="active" ui-sref-opts="{reload: true}"><a ui-sref="qbojrnl"><i class='bx bx-globe'></i></i><span>Journals</span></a></li>
-            <li ui-sref-active="active" ui-sref-opts="{reload: true}"><a ui-sref="qbopayment"><i class='bx bx-globe'></i></i><span>Payments</span></a></li>
-            <li ui-sref-active="active" ui-sref-opts="{reload: true}"><a ui-sref="qbocm"><i class='bx bx-globe'></i></i><span>Credit Memo</span></a></li>
-            <li ui-sref-active="active" ui-sref-opts="{reload: true}"><a ui-sref="qbocoa"><i class='bx bx-globe'></i></i><span>COA Managment</span></a></li>
+            <li ui-sref-active="active" ui-sref-opts="{reload: true}">
+                <a ui-sref="app.qbo.invoices">
+                    <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
+                    <span>Invoices</span>
+                </a>
+            </li>
+            <li ui-sref-active="active" ui-sref-opts="{reload: true}">
+                <a ui-sref="app.qbo.invoices">
+                    <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
+                    <span>Inventory</span>
+                </a>
+            </li>
+            <li ui-sref-active="active" ui-sref-opts="{reload: true}">
+                <a ui-sref="app.qbo.invoices">
+                    <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
+                    <span>Advances</span>
+                </a>
+            </li>
+            <li ui-sref-active="active" ui-sref-opts="{reload: true}">
+                <a ui-sref="app.qbo.invoices">
+                    <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
+                    <span>Claims & Assistant</span>
+                </a>
+            </li>
+            <li ui-sref-active="active" ui-sref-opts="{reload: true}">
+                <a ui-sref="app.qbo.invoices">
+                    <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
+                    <span>Payments</span>
+                </a>
+            </li>
+            <li ui-sref-active="active" ui-sref-opts="{reload: true}">
+                <a ui-sref="app.qbo.invoices">
+                    <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
+                    <span>Credit & Debit</span>
+                </a>
+            </li>
         </ul>
     </div>
 </div>

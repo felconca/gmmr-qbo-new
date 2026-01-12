@@ -43,6 +43,42 @@ class QboEntityService
                 return $itemid;
         }
     }
+
+    public function radio_cost($codes = 0, $costid = 0)
+    {
+        // $id = $this->jnrid($codes);
+        // return ($codes > 0 && is_array($id) && isset($id["costid"])) ? $id["costid"] : $costid;
+        switch ($codes) {
+            case 13: //RADIOLOGY
+                return 281;
+            case 3: //CT-SCAN
+                return 294;
+            case 15: // ULTRASOUND
+                return 283;
+            case 31: //MRI
+                return 284;
+            default:
+                return $costid;
+        }
+    }
+
+    public function radio_inventory($codes = 0, $invid = 0)
+    {
+        // $id = $this->jnrid($codes);
+        // return ($codes > 0 && is_array($id) && isset($id["invid"])) ? $id["invid"] : $invid;
+        switch ($codes) {
+            case 13: //RADIOLOGY
+                return 262;
+            case 3: //CT-SCAN
+                return 250;
+            case 15: // ULTRASOUND
+                return 263;
+            case 31: //MRI
+                return 285;
+            default:
+                return $invid;
+        }
+    }
     public function discountvat()
     {
         return 10; // sales tax
@@ -67,4 +103,30 @@ class QboEntityService
 
         return ["status" => $invoice['status'], "synctoken" => $invoice['data'][$entity]['SyncToken']];
     }
+    // public function jnrid($id)
+    // {
+    //     // Return cost and inventory IDs for a given department code
+    //     $department = $this->conn->wgcentralsupply()
+    //         ->SELECT("centerRID", 'department')
+    //         ->WHERE(["DeptCode" => $id])
+    //         ->first();
+
+    //     if (!$department) {
+    //         return null;
+    //     }
+
+    //     $center = $this->conn->iparbg()
+    //         ->SELECT(["qbo_cost_id AS costid", "qbo_inv_id AS invid"], 'lkup_centers')
+    //         ->WHERE(["centerRID" => $department->centerRID])
+    //         ->first();
+
+    //     if (!$center) {
+    //         return null;
+    //     }
+
+    //     return [
+    //         "costid" => $center->costid,
+    //         "invid"  => $center->invid
+    //     ];
+    // }
 }

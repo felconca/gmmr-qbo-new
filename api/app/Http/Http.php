@@ -61,6 +61,17 @@ Route::group(['prefix' => 'pf', 'middleware' => [new AuthSession("user")]], func
 });
 
 
+// inventory
+Route::group(['prefix' => 'inventory', 'middleware' => [new AuthSession("user")]], function () {
+    // gmmr functions
+    Route::get('pharmacy', 'InventoryController@pharmacy');
+    Route::get('nonpharma', 'InventoryController@nonpharma');
+    Route::post('book_inventory', 'InventoryController@book_inventory');
+    Route::post('delete_inventory', 'InventoryController@delete_inventory');
+    // for quickbooks functions
+
+});
+
 // Route::get('users/{id}', 'AppController@edit', [new AuthToken()]);
 Route::get('users/id/{id}/date/{date}', 'AppController@showByIdDate', [new AuthToken()]);
 

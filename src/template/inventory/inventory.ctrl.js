@@ -1,24 +1,21 @@
 angular
   .module("app")
-  .controller("pharmacyCtrl", function ($scope, $state, $http, AuthService, SweetAlert2, $qbo, $uibModal, $filter) {
-    const vm = $scope;
-    const vs = $state;
+  .controller("inventoryCtrl", function ($scope, $state, $filter, AuthService, SweetAlert2, $qbo, $http) {
+    let vm = $scope;
+    let vs = $state;
 
-    // --- Initialization and State ---
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const PHARMA_FILTER = JSON.parse(localStorage.getItem("pharma-filter"));
+    const INVENTORY_FILTER = JSON.parse(localStorage.getItem("inventory-filter"));
     const FILTER = (FILTERED) => ({
       startDate: FILTERED && FILTERED.startDate ? FILTERED.startDate : thirtyDaysAgo,
       endDate: FILTERED && FILTERED.endDate ? FILTERED.endDate : new Date(),
       status: FILTERED && typeof FILTERED.status !== "undefined" ? FILTERED.status : 0,
       isBooked: FILTERED && typeof FILTERED.isBooked !== "undefined" ? FILTERED.isBooked : -1, // if the variable is 0  it return invalid so better check or undefined type
     });
-
     Object.assign(vm, {
-      invoicesList: [],
-      invoiceDetails: [],
-      invoiceInfo: {},
+      pharmacyList: [],
+      nonpharmaList: [],
       selectedItems: [],
       currentPage: 1,
       itemsPerPage: 50,
@@ -26,22 +23,22 @@ angular
       isLoadingData: false,
       isFiltering: false,
       isSending: false,
-      filtered: FILTER(PHARMA_FILTER),
+      filtered: FILTER(INVENTORY_FILTER),
       Math: window.Math,
       invoiceId: 0,
     });
 
-    vm.handleInvoiceList = (filter) => {
+    vm.getPharmacy = (filter) => {
       vm.isFiltering = true;
       let start_dt = $filter("date")(filter.startDate, "yyyy-MM-dd"),
         end_dt = $filter("date")(filter.endDate, "yyyy-MM-dd");
 
       $http
         .get(
-          `api/pharmacy/invoices?start_dt=${start_dt}&end_dt=${end_dt}&status=${filter.status}&isbooked=${filter.isBooked}`
+          `api/inventory/pharmacy?start_dt=${start_dt}&end_dt=${end_dt}&status=${filter.status}&isbooked=${filter.isBooked}`
         )
         .then((res) => {
-          vm.invoicesList = res.data;
+          vm.pharmacyList = res.data;
         })
         .catch((err) => {
           console.error(err);
@@ -51,58 +48,36 @@ angular
           vm.isFiltering = false;
         });
     };
-    vm.handleInvoiceList(vm.filtered);
-    vm.handleFilter = (filtered) => {
-      // console.log(filtered);
-      vm.invoicesList = [];
-      vm.handleInvoiceList(filtered);
-      localStorage.setItem("pharma-filter", JSON.stringify(filtered));
-    };
-    vm.handleInvoiceEdit = (id) => {
-      $http
-        .get(`api/pharmacy/edit?id=${id}`)
-        .then((res) => {
-          vm.invoiceInfo = res.data.invoice;
-          vm.invoiceDetails = res.data.details;
-        })
-        .catch((err) => {
-          console.error(err);
-        });
-    };
-
-    vm.handleBookItems = async (items) => {
+    vm.getPharmacy(vm.filtered);
+    vm.handleBookItems = async (items, st, db) => {
       if (items.length > 0) {
         vm.isSending = true;
         let token = await AuthService.token("accesstoken");
         if (token) {
-          let invoices = items.map((i) => ({
+          let inventory = items.map((i) => ({
             tranid: i.tranid,
-            pxid: i.pxid > 0 ? i.pxid : "0",
-            gstatus: i.transtatus,
-            docnumber: $qbo.status(2) + i.tranid,
+            docnumber: $qbo.status(st) + i.tranid,
             txndate: i.trandate,
-            amount: i.netamount,
-            discounts: i.discount + i.ldiscount,
-            subtotal: i.gross,
             qbostatus: i.sent_status,
             qboid: i.sent_id,
             customerref: i.pxid > 0 ? i.qbopx : 530,
+            pxid: i.pxid > 0 ? i.pxid : "0",
             fname: i.fname,
             mname: i.mname,
             lname: i.lname,
             suffix: i.suffix,
-            gtaxcalc: $qbo.included(),
-            memo: `${i.transtatus} SI - ${i.tranid}\nPatient: ${
+            amount: i.netcost,
+            note: `${i.transtatus} SI - ${i.tranid}\nPatient: ${
               i.pxid > 0 ? i.completepx : "Walk-In Patient"
             }\nCreated By: ${i.ufname} ${i.ulname}`,
           }));
-          // console.log(invoices);
+          //   console.log({ data: inventory, token: token, database: db });
           $http
-            .post("api/pharmacy/book_invoice", { token: token, data: invoices })
+            .post("api/inventory/book_inventory", { data: inventory, token: token, database: db })
             .then((res) => {
               Toasty.showToast(
                 "Success",
-                `Invoice(s) booked successfully`,
+                `Inventory booked successfully`,
                 `<i class="ph-fill ph-check-circle"></i>`,
                 5000
               );
@@ -112,8 +87,8 @@ angular
               const failed = err.data.results.filter((r) => r.status === "failed").length;
               Toasty.showToast(
                 `Attention`,
-                `${success} of ${items.length} invoices were booked.
-                ${failed} invoice(s) failed to processed`,
+                `${success} of ${items.length} inventory were booked.
+                  ${failed} inventory failed to processed`,
                 `<i class="ph-fill ph-warning text-warning"></i>`,
                 5000
               );
@@ -123,33 +98,22 @@ angular
               vm.isSending = false;
               vm.selectAll = false;
               vm.selectedItems = [];
-              vm.handleInvoiceList(vm.filtered);
+              vm.getPharmacy(vm.filtered);
             });
-        } else {
-          vm.isSending = false;
-          vm.selectAll = false;
-          vm.selectedItems = [];
-          vm.handleInvoiceList(vm.filtered);
-          Toasty.showToast(
-            "Token Error",
-            `Cannot book invoice(s), token not found`,
-            `<i class="ph-fill ph-x-circle text-danger"></i>`,
-            3000
-          );
         }
       }
     };
-    vm.handleUnBookedItems = async (items) => {
+    vm.handleUnBookedItems = async (items, db) => {
       if (items.length > 0) {
         vm.isSending = true;
         let token = await AuthService.token("accesstoken");
         if (token) {
-          let invoices = items.map((i) => ({
+          let inventory = items.map((i) => ({
             tranid: i.tranid,
-            qboid: i.sent_id,
+            qboid: i.cost_id,
           }));
           $http
-            .post("api/pharmacy/delete_invoice", { token: token, data: invoices })
+            .post("api/inventory/delete_inventory", { token: token, data: inventory, database: db })
             .then((res) => {
               Toasty.showToast(
                 "Success",
@@ -163,8 +127,8 @@ angular
               const failed = err.data.results.filter((r) => r.status === "failed").length;
               Toasty.showToast(
                 `Attention`,
-                `${success} of ${items.length} invoices were booked.
-                ${failed} invoice(s) failed to processed`,
+                `${success} of ${items.length} inventory were booked.
+                  ${failed} invoice(s) failed to processed`,
                 `<i class="ph-fill ph-warning text-warning"></i>`,
                 5000
               );
@@ -174,13 +138,13 @@ angular
               vm.isSending = false;
               vm.selectAll = false;
               vm.selectedItems = [];
-              vm.handleInvoiceList(vm.filtered);
+              vm.getPharmacy(vm.filtered);
             });
         } else {
           vm.isSending = false;
           vm.selectAll = false;
           vm.selectedItems = [];
-          vm.handleInvoiceList(vm.filtered);
+          vm.getPharmacy(vm.filtered);
           Toasty.showToast(
             "Token Error",
             `Cannot book invoice(s), token not found`,
@@ -190,20 +154,12 @@ angular
         }
       }
     };
-
-    vm.showInvoiceModal = (id) => {
-      if (id > 0) {
-        vm.handleInvoiceEdit(id);
-        vm.invoiceId = id;
-        const $uibModalInstance = $uibModal.open({
-          animation: true,
-          templateUrl: "src/template/pharmacy/modal.tpl.php",
-          size: "xl",
-          scope: vm,
-          backdrop: "static",
-        });
-        vm.closeInvoiceModal = () => $uibModalInstance.close();
-      }
+    vm.handleFilter = (filtered) => {
+      // console.log(filtered);
+      vm.pharmacyList = [];
+      vm.nonpharmaList = [];
+      vm.getPharmacy(filtered);
+      localStorage.setItem("inventory-filter", JSON.stringify(filtered));
     };
     vm.handleSelectAllItems = (list) => {
       vm.selectAll = !vm.selectAll;
@@ -228,13 +184,6 @@ angular
       const startIndex = (vm.currentPage - 1) * vm.itemsPerPage;
       const endIndex = Math.min(startIndex + vm.itemsPerPage, list.length);
       vm.selectAll = list.slice(startIndex, endIndex).every((item) => item.selected);
-    };
-    vm.findInvoice = async function (id) {
-      let token = await AuthService.token("accesstoken");
-      $http
-        .post("api/pharmacy/findInvoice", { token: token, id: id })
-        .then((res) => console.log(res.data))
-        .catch((err) => console.error(err));
     };
 
     // helpers

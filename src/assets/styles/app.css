@@ -491,8 +491,6 @@ select {
     appearance: base-select;
     background-color: #ffffff;
     transition: all ease-in-out 0.2s;
-  }
-  &::picker(select) {
     border: 1px solid #d8d8d8;
     border-radius: 5px;
     margin-top: 1px;

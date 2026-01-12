@@ -24,14 +24,14 @@
  <!-- filter -->
  <div class="d-flex align-items-end justify-content-between mt-3" style="gap:6px">
      <div class="w-50">
-         <div class="input-form-grp bg-white w-50" ng-disabled="isFiltering || isSending">
+         <div class="input-form-grp bg-white" ng-disabled="isFiltering || isSending" style="width: 300px;">
              <input type="text" placeholder="Search" ng-model="search" ng-model-options="{ debounce: 500 }" ng-disabled="isFiltering || isSending">
              <i class='bx bx-search-alt-2'></i>
          </div>
      </div>
      <div class="">
          <div class="d-flex align-items-end justify-content-end" style="gap: 6px;">
-             <div class="filter-input w-25">
+             <div class="filter-input" style="width: 145px;">
                  <span>Status</span>
                  <select class="input-form" ng-model="filtered.isBooked" ng-disabled="isFiltering || isSending">
                      <option ng-value="-1">All Status</option>
@@ -42,7 +42,7 @@
                      <option ng-value="5">Unbooked</option>
                  </select>
              </div>
-             <div class="filter-input w-50">
+             <div class="filter-input " style="width: 260px;">
 
                  <span>GMMR Status</span>
                  <select class="input-form" ng-model="filtered.status" ng-disabled="isFiltering || isSending">
@@ -55,11 +55,11 @@
                      <option ng-value="21">PT Charges</option>
                  </select>
              </div>
-             <div class="filter-input w-25">
+             <div class="filter-input" style="width: 150px;">
                  <span>Date From:</span>
                  <input type="date" class="input-form" ng-model="filtered.startDate" date-input ng-disabled="isFiltering || isSending">
              </div>
-             <div class="filter-input w-25">
+             <div class="filter-input" style="width: 150px;">
                  <span>Date To:</span>
                  <input type="date" class="input-form" ng-model="filtered.endDate" date-input ng-disabled="isFiltering || isSending">
              </div>
