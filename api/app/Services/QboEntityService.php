@@ -44,6 +44,29 @@ class QboEntityService
         }
     }
 
+    public function consultation($productid = 0, $vat = 0, $itemid = 0)
+    {
+        if ($productid == 436 && $vat == 0) {
+            return 1000100902;
+        }
+        if ($productid == 436 && $vat > 0) {
+            return 1000101002;
+        } else {
+            return  $itemid;
+        }
+    }
+    public function pharmacy($class = 0, $vat, $itemid = 0)
+    {
+        if ($class == 436 && $vat == 0) {
+            return 1000100902;
+        }
+        if ($class == 436 && $vat > 0) {
+            return 1000101002;
+        } else {
+            return  $itemid;
+        }
+    }
+
     public function radio_cost($codes = 0, $costid = 0)
     {
         // $id = $this->jnrid($codes);

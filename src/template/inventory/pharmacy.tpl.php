@@ -62,7 +62,7 @@
                 <span>Date To:</span>
                 <input type="date" class="input-form" ng-model="filtered.endDate" date-input ng-disabled="isFiltering || isSending">
             </div>
-            <button class="btn btn-theme-dark" ng-click="handleFilter(filtered)"
+            <button class="btn btn-theme-dark" ng-click="handleFilter(filtered, 'pharma')"
                 ng-disabled="isFiltering || isSending">
                 <img ng-if="isFiltering" style="width:20px; height:20px" src="src/assets/img/loader_24x.svg" alt="">
                 <span ng-if="!isFiltering" class="text-white">GO</span>

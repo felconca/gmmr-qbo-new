@@ -178,3 +178,10 @@
      </span>
      <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages" items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(invoicesList)"></ul>
  </div>
+
+ <table-pagination
+     items="searched"
+     current-page="currentPage"
+     items-per-page="itemsPerPage"
+     on-page-change="changePage(invoicesList)">
+ </table-pagination>
