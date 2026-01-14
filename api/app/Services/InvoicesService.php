@@ -38,7 +38,7 @@ class InvoicesService
             $update["sent_to_qbo_update_amt"] = $amount;
         }
 
-        return  $this->conn->$db
+        return  $this->conn->$db()
             ->update("possales", $update)
             ->WHERE(["TranRID" => $tranid]);
     }

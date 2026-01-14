@@ -54,37 +54,43 @@
 
         <ul>
             <li ui-sref-active="active" ui-sref-opts="{reload: true}">
-                <a ui-sref="app.qbo.invoices">
+                <a ui-sref="app.quickbooks.items">
+                    <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
+                    <span>Items</span>
+                </a>
+            </li>
+            <li ui-sref-active="active" ui-sref-opts="{reload: true}">
+                <a ui-sref="app.quickbooks.invoices">
                     <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
                     <span>Invoices</span>
                 </a>
             </li>
             <li ui-sref-active="active" ui-sref-opts="{reload: true}">
-                <a ui-sref="app.qbo.invoices">
+                <a ui-sref="app.quickbooks.invoices">
                     <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
                     <span>Inventory</span>
                 </a>
             </li>
             <li ui-sref-active="active" ui-sref-opts="{reload: true}">
-                <a ui-sref="app.qbo.invoices">
+                <a ui-sref="app.quickbooks.invoices">
                     <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
                     <span>Advances</span>
                 </a>
             </li>
             <li ui-sref-active="active" ui-sref-opts="{reload: true}">
-                <a ui-sref="app.qbo.invoices">
+                <a ui-sref="app.quickbooks.invoices">
                     <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
                     <span>Claims & Assistant</span>
                 </a>
             </li>
             <li ui-sref-active="active" ui-sref-opts="{reload: true}">
-                <a ui-sref="app.qbo.invoices">
+                <a ui-sref="app.quickbooks.invoices">
                     <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
                     <span>Payments</span>
                 </a>
             </li>
             <li ui-sref-active="active" ui-sref-opts="{reload: true}">
-                <a ui-sref="app.qbo.invoices">
+                <a ui-sref="app.quickbooks.invoices">
                     <img src="src/assets/img/quickbooks-icon.svg" class="me-2">
                     <span>Credit & Debit</span>
                 </a>

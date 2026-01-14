@@ -72,6 +72,15 @@ Route::group(['prefix' => 'inventory', 'middleware' => [new AuthSession("user")]
 
 });
 
+Route::group(['prefix' => 'quickbooks', 'middleware' => [new AuthSession("user")]], function () {
+    // QBO invoice specific endpoints
+    Route::get('items/list', 'QBOServiceController@items_list');
+    Route::post('items/add', 'QBOServiceController@items_add');
+    Route::post('items/update', 'QBOServiceController@items_update');
+    Route::post('items/delete', 'QBOServiceController@items_delete');
+});
+
+
 // Route::get('users/{id}', 'AppController@edit', [new AuthToken()]);
 Route::get('users/id/{id}/date/{date}', 'AppController@showByIdDate', [new AuthToken()]);
 

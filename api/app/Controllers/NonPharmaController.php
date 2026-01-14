@@ -326,13 +326,14 @@ class NonPharmaController extends Rest
                         ];
                     }
 
-                    // Always update DB
-                    $invoiceService->update($updateData, wgcentralsupply());
+                    //Always update DB
+                    $invoiceService->update($updateData, "wgcentralsupply");
+                    //return $response($invoice, 200);
                 } catch (Exception $e) {
                     // Catch QBO errors / customer creation errors
                     $updateData["status"] = 4;
                     $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
-                    $invoiceService->update($updateData, wgcentralsupply());
+                    $invoiceService->update($updateData, "wgcentralsupply");
 
                     $results[] = [
                         "tranid" => $row["tranid"],
@@ -404,7 +405,7 @@ class NonPharmaController extends Rest
                         ];
                     }
 
-                    $invoiceService->update($updateData, wgcentralsupply());
+                    $invoiceService->update($updateData, "wgcentralsupply");
                 } catch (\Exception $ex) {
                     $hasErrors = true;
                     $results[] = [
@@ -453,12 +454,29 @@ class NonPharmaController extends Rest
                 $list = (array)$list;
             }
 
+            // Determine the correct ItemRef value
+            $itemRefValue = null;
+            if (isset($list['productid']) && $list['productid'] == 436) {
+                // If productid 436, use consultation logic
+                $itemRefValue = $qbo->consultation(
+                    isset($list['productid']) ? $list['productid'] : 0,
+                    isset($list['vat']) ? $list['vat'] : 0,
+                    isset($list["itemid"]) ? $list["itemid"] : 0
+                );
+            } else {
+                // Default radio logic for other items
+                $itemRefValue = $qbo->radio(
+                    isset($list["codes"]) ? $list["codes"] : 0,
+                    isset($list["itemid"]) ? $list["itemid"] : 0
+                );
+            }
+
             $lines[] = [
                 "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
                 "DetailType" => "SalesItemLineDetail",
                 "SalesItemLineDetail" => [
                     "TaxInclusiveAmt" => isset($list["gross"]) ? $list["gross"] : 0,
-                    "ItemRef" => ["value" => $qbo->radio(isset($list["codes"]) ? $list["codes"] : 0, isset($list["itemid"]) ? $list["itemid"] : 0)],
+                    "ItemRef" => ["value" => $itemRefValue],
                     "TaxCodeRef" => [
                         "value" => (isset($list["vat"]) && $list["vat"] > 0) ? $qbo->vat("vat-s") : $qbo->vat("vat-ex")
                     ],

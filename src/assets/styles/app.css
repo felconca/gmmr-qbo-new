@@ -1258,3 +1258,17 @@ option:active {
 .tip-button button:active {
   background-color: #017137 !important;
 }
+
+.btn-table {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background-color: transparent;
+  color: #2c2e3b;
+  cursor: pointer;
+}
+.btn-table i {
+  color: #2c2e3b;
+  font-size: 16px;
+}

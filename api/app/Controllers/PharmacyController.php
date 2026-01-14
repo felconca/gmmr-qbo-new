@@ -322,12 +322,12 @@ class PharmacyController extends Rest
                     }
 
                     // Always update DB
-                    $invoiceService->update($updateData, wgfinance());
+                    $invoiceService->update($updateData, "wgfinance");
                 } catch (Exception $e) {
                     // Catch QBO errors / customer creation errors
                     $updateData["status"] = 4;
                     $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
-                    $invoiceService->update($updateData, wgfinance());
+                    $invoiceService->update($updateData, "wgfinance");
 
                     $results[] = [
                         "tranid" => $row["tranid"],
@@ -399,7 +399,7 @@ class PharmacyController extends Rest
                         ];
                     }
 
-                    $invoiceService->update($updateData, wgfinance());
+                    $invoiceService->update($updateData, "wgfinance");
                 } catch (\Exception $ex) {
                     $hasErrors = true;
                     $results[] = [
@@ -447,19 +447,12 @@ class PharmacyController extends Rest
             if (is_object($list)) {
                 $list = (array)$list;
             }
-            // Determine the correct ItemRef for the line item
-            // The problem with $itemRef always being 0 is likely due to the check for 'itemid' relying on 'empty' which also returns true for "0"
-            // Use isset instead and allow itemid=0 (if that is a legitimate value in your data)
-            if (!empty($list["vat"]) && $list["vat"] > 0) {
-                // For VAT items, use a hardcoded QBO item reference (could be made configurable)
-                $itemRef = "1000100802";
-            } elseif (isset($list["itemid"]) && $list["itemid"] !== null && $list["itemid"] !== '' && $list["itemid"] != 0) {
-                // Item is specified and not 0 or empty string
-                $itemRef = $list["itemid"];
-            } else {
-                // Default fallback (should match your intended behavior)
-                $itemRef = 0;
-            }
+
+            $itemRef = $qbo->pharmacy(
+                isset($list['class']) ? $list['class'] : 0,
+                isset($list['vat']) ? $list['vat'] : 0,
+                isset($list["itemid"]) ? $list["itemid"] : 0
+            );
             $lines[] = [
                 "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
                 "DetailType" => "SalesItemLineDetail",

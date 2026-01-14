@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use Includes\Rest;
 use Core\Database\Database;
+use QuickBooksOnlineHelper\Facades\QBO;
 use Redis\RedisCache;
 
 class QBOServiceController extends Rest
@@ -24,6 +25,10 @@ class QBOServiceController extends Rest
         parent::__construct();
 
         $this->db = new Database();
+
+        $this->clientId = isset($_ENV["QBO_CLIENTID"]) ? $_ENV["QBO_CLIENTID"] : NULL;
+        $this->secretId = isset($_ENV["QBO_SECRETID"]) ? $_ENV["QBO_SECRETID"] : NULL;
+        $this->companyId = isset($_ENV["QBO_COMPANYID"]) ? $_ENV["QBO_COMPANYID"] : NULL;
         $this->redis = new RedisCache([
             'host'     => '127.0.0.1',
             'port'     => 6379,
@@ -162,5 +167,28 @@ class QBOServiceController extends Rest
             "status" => 200,
             "customer_id" => $customerId
         ], 200);
+    }
+    // get list of items
+    public function items_list($request, $reponse)
+    {
+        try {
+            $input = $request->validate([
+                "token" => "required",
+            ]);
+            $token = $input["token"]; // accestoken
+
+            QBO::setAuth($this->companyId, $token);
+            $items = QBO::all()->Item();
+
+            return $reponse([
+                'status' => 200,
+                'items' => $items['data']['QueryResponse']['Item']
+            ], 200);
+        } catch (\Exception $e) {
+            return $reponse([
+                'status' => 500,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -137,6 +137,25 @@ angular
         data: { breadcrumb: "NonPharma Inventory", pageTitle: "GMMR-QBO | Inventory-NonPharma" },
       });
 
+      // quikcbooks
+      $stateProvider
+        .state("app.quickbooks", {
+          abstract: true,
+          templateUrl: "src/template/quickbooks/layout.tpl.php",
+          controller: "quickbooksCtrl",
+          resolve: {
+            loadCtrl: function ($ocLazyLoad) {
+              return $ocLazyLoad.load("src/template/quickbooks/quickbooks.ctrl.js");
+            },
+          },
+          data: { breadcrumb: "QuickBooks", pageTitle: "GMMR-QBO | QuickBooks" },
+        })
+        .state("app.quickbooks.items", {
+          url: "/items",
+          templateUrl: "src/template/quickbooks/items.tpl.php",
+          data: { breadcrumb: "Items", pageTitle: "GMMR-QBO | QuickBooks - Items" },
+        });
+
       // set to url to html5
       $locationProvider.html5Mode(true);
     },

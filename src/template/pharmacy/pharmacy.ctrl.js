@@ -78,7 +78,7 @@ angular
           let invoices = items.map((i) => ({
             tranid: i.tranid,
             pxid: i.pxid > 0 ? i.pxid : "0",
-            gstatus: i.transtatus,
+            gstatus: i.tstatus == 12 ? "PHARMA/OPD(CHARGE TO ACCOUNT)" : i.transtatus,
             docnumber: $qbo.status(2) + i.tranid,
             txndate: i.trandate,
             amount: i.netamount,

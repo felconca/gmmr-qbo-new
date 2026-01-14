@@ -47,24 +47,20 @@ class QboEntityService
     public function consultation($productid = 0, $vat = 0, $itemid = 0)
     {
         if ($productid == 436 && $vat == 0) {
-            return 1000100902;
+            return "41";
         }
         if ($productid == 436 && $vat > 0) {
-            return 1000101002;
+            return "42";
         } else {
             return  $itemid;
         }
     }
-    public function pharmacy($class = 0, $vat, $itemid = 0)
+    public function pharmacy($class = 0, $vat = 0, $itemid = 0)
     {
-        if ($class == 436 && $vat == 0) {
-            return 1000100902;
+        if ($class == 94) {
+            return "44";
         }
-        if ($class == 436 && $vat > 0) {
-            return 1000101002;
-        } else {
-            return  $itemid;
-        }
+        return $vat > 0 ? "40" : $itemid;
     }
 
     public function radio_cost($codes = 0, $costid = 0)
