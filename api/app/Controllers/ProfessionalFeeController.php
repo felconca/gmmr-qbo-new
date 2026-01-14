@@ -290,12 +290,12 @@ class ProfessionalFeeController extends Rest
                     }
 
                     // Always update DB
-                    $invoiceService->update($updateData, wgcentralsupply());
+                    $invoiceService->update($updateData, "wgcentralsupply");
                 } catch (Exception $e) {
                     // Catch QBO errors / customer creation errors
                     $updateData["status"] = 4;
                     $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
-                    $invoiceService->update($updateData, wgcentralsupply());
+                    $invoiceService->update($updateData, "wgcentralsupply");
 
                     $results[] = [
                         "tranid" => $row["tranid"],
@@ -367,7 +367,7 @@ class ProfessionalFeeController extends Rest
                         ];
                     }
 
-                    $invoiceService->update($updateData, wgcentralsupply());
+                    $invoiceService->update($updateData, "wgcentralsupply");
                 } catch (\Exception $ex) {
                     $hasErrors = true;
                     $results[] = [
