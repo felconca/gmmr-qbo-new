@@ -71,9 +71,9 @@ class ProfessionalFeeController extends Rest
 
                     "CONCAT(px.LastName, ', ', px.FirstName) AS lnamefirst",
                     "CONCAT(px.FirstName, ', ', px.LastName) AS fnamefirst",
-                    "CONCAT(px.LastName, ', ', px.FirstName, px.namesuffix) AS lnamefirstsx",
-                    "CONCAT(px.FirstName, ', ', px.LastName, px.namesuffix) AS fnamefirstsx",
-                    "CONCAT(px.FirstName, ' ', IFNULL(SUBSTRING(px.MiddleName,1,1),''), ' ', px.LastName, ' ', px.namesuffix) AS completepx",
+                    "CONCAT(px.LastName, ', ', px.FirstName, IFNULL(px.namesuffix, '')) AS lnamefirstsx",
+                    "CONCAT(px.FirstName, ', ', px.LastName, IFNULL(px.namesuffix, '')) AS fnamefirstsx",
+                    "CONCAT(px.FirstName, ' ', IFNULL(SUBSTRING(px.MiddleName,1,1),''), ' ', px.LastName, ' ', IFNULL(px.namesuffix, '')) AS completepx",
 
                     "px.qbo_px_id AS qbopx",
 
@@ -205,7 +205,7 @@ class ProfessionalFeeController extends Rest
                     $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
                     $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
 
-                    $isUpdate = $qboid > 0 && ($qbostatus == 1 || $qbostatus == 2);
+                    $isUpdate = $qboid > 0;
                     $action = $isUpdate ? QBO::update() : QBO::create();
 
                     $line = $this->line_invoice($row["tranid"]);
@@ -449,19 +449,20 @@ class ProfessionalFeeController extends Rest
 
         // Add discount line
         $discountSum = $discountTotal + $ldiscountTotal;
-        if ($discountSum != 0) {
-            $lines[] = [
-                "Description" => "Line Discount & 20% Discount",
-                "DetailType" => "SalesItemLineDetail",
-                "SalesItemLineDetail" => [
-                    "Qty" => 0,
-                    "UnitPrice" => 0 - $discountSum,
-                    "ItemRef" => ["value" => $qbo->discount(), "name" => "Discount"],
-                ],
-                "LineNum" => count($details) + 2,
-                "Amount" => 0 - $discountSum,
-            ];
-        }
+        $lines[] = [
+            "Description" => "Line Discount & 20% Discount",
+            "DetailType" => "SalesItemLineDetail",
+            "SalesItemLineDetail" => [
+                "Qty" => 0,
+                "UnitPrice" => 0 - $discountSum,
+                "ItemRef" => ["value" => $qbo->discount(), "name" => "Discount"],
+            ],
+            "LineNum" => count($details) + 2,
+            "Amount" => 0 - $discountSum,
+        ];
+        // if ($discountSum != 0) {
+
+        // }
 
         return $lines;
     }

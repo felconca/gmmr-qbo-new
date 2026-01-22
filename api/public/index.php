@@ -8,8 +8,36 @@ use Core\Routes\Route;
 use Includes\Rest;
 
 // For PHP 5.6+ compatibility - no type hints or trailing commas, use array()
-$dotenv = Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->load();
+// $dotenv = Dotenv::createUnsafeImmutable(__DIR__ . '/..');
+// $dotenv->load();
+// $_CONFIG = require __DIR__ . '/../config/env.php';
+
+$env = require __DIR__ . '/../config/env.php';
+
+// Populate $_ENV
+foreach ($env as $key => $value) {
+    $_ENV[$key] = $value;
+}
+
+// (Optional but recommended) Populate getenv()
+foreach ($_ENV as $key => $value) {
+    putenv($key . '=' . $value);
+}
+
+// // Optional: allow real env vars to override config
+// if (!empty($_ENV)) {
+//     foreach ($_ENV as $key => $value) {
+//         if (isset($_CONFIG[$key])) {
+//             $_CONFIG[$key] = $value;
+//         }
+//     }
+// }
+
+// // Make it globally accessible
+// $GLOBALS['_CONFIG'] = $_CONFIG;
+
+// // Optional: prevent accidental overwrite
+// unset($_CONFIG);
 
 // Load all defined routes
 $routes = Route::all();

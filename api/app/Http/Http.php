@@ -72,6 +72,55 @@ Route::group(['prefix' => 'inventory', 'middleware' => [new AuthSession("user")]
 
 });
 
+// credit memo
+Route::group(['prefix' => 'credit', 'middleware' => [new AuthSession("user")]], function () {
+    // gmmr functions
+    Route::get('list', 'CreditMemoController@index');
+    Route::get('edit', 'CreditMemoController@edit');
+    // for quickbooks functions
+    Route::post('book_credit', 'CreditMemoController@book_credit');
+    Route::post('update_credit', 'CreditMemoController@update_credit');
+    Route::post('delete_credit', 'CreditMemoController@delete_credit');
+    Route::post('find_credit', 'CreditMemoController@find_credit');
+});
+
+// debit memo
+Route::group(['prefix' => 'debit', 'middleware' => [new AuthSession("user")]], function () {
+    // gmmr functions
+    Route::get('list', 'DebitMemoController@index');
+    Route::get('edit', 'DebitMemoController@edit');
+    // for quickbooks functions
+    Route::post('book_debit', 'DebitMemoController@book_debit');
+    Route::post('update_debit', 'DebitMemoController@update_debit');
+    Route::post('delete_debit', 'DebitMemoController@delete_debit');
+    Route::post('find_debit', 'DebitMemoController@find_debit');
+});
+
+// return functions
+Route::group(['prefix' => 'returns', 'middleware' => [new AuthSession("user")]], function () {
+    // gmmr functions
+    Route::get('pharmacy', 'SaleReturnController@pharmacy');
+    Route::get('nonpharma', 'SaleReturnController@nonpharma');
+    Route::post('edit', 'SaleReturnController@edit');
+    Route::post('book_returns', 'SaleReturnController@book_returns');
+    Route::post('delete_returns', 'SaleReturnController@delete_returns');
+    Route::post('find_returns', 'SaleReturnController@find_returns');
+    // for quickbooks functions
+});
+
+// advances functions
+Route::group(['prefix' => 'advances', 'middleware' => [new AuthSession("user")]], function () {
+    // gmmr functions
+    Route::get('list', 'AdvancesToController@index');
+    Route::post('edit', 'AdvancesToController@edit');
+    Route::post('book_returns', 'AdvancesToController@book_returns');
+    Route::post('delete_returns', 'AdvancesToController@delete_returns');
+    Route::post('find_returns', 'AdvancesToController@find_returns');
+    // for quickbooks functions
+});
+
+
+// quickbooks
 Route::group(['prefix' => 'quickbooks', 'middleware' => [new AuthSession("user")]], function () {
     // QBO invoice specific endpoints
     Route::get('items/list', 'QBOServiceController@items_list');

@@ -109,19 +109,36 @@ class QboEntityService
     public function synctoken($id, $token, $entity)
     {
         QBO::setAuth($this->companyId, $token);
-        $invoice = QBO::get()->$entity($id);
+        $qb = QBO::get()->$entity($id);
 
         // Check for API call failure (status not 200 or 201)
-        if (!is_array($invoice) || !isset($invoice['status']) || !in_array($invoice['status'], [200, 201], true)) {
+        if (!is_array($qb) || !isset($qb['status']) || !in_array($qb['status'], [200, 201], true)) {
             throw new Exception(
-                isset($invoice['data']) && is_string($invoice['data'])
-                    ? $invoice['data']
-                    : "Failed to find invoice"
+                isset($qb['data']) && is_string($qb['data'])
+                    ? $qb['data']
+                    : "Failed to find $entity"
             );
         }
 
-        return ["status" => $invoice['status'], "synctoken" => $invoice['data'][$entity]['SyncToken']];
+        return ["status" => $qb['status'], "synctoken" => $qb['data'][$entity]['SyncToken']];
     }
+    public function details($id, $token, $entity)
+    {
+        QBO::setAuth($this->companyId, $token);
+        $qb = QBO::get()->$entity($id);
+
+        // Check for API call failure (status not 200 or 201)
+        if (!is_array($qb) || !isset($qb['status']) || !in_array($qb['status'], [200, 201], true)) {
+            throw new Exception(
+                isset($qb['data']) && is_string($qb['data'])
+                    ? $qb['data']
+                    : "Failed to find $entity"
+            );
+        }
+
+        return ["status" => $qb['status'], "details" => $qb['data'][$entity]];
+    }
+
     // public function jnrid($id)
     // {
     //     // Return cost and inventory IDs for a given department code

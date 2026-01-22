@@ -17,7 +17,8 @@ angular.module("app").factory("$qbo", function () {
     13: "PYW-", // GMMR Walkin_in payment
     14: "CPH-", // GMMR Pharma Credit Memo
     15: "CNP-", // GMMR Non Pharma Credit Memo
-    16: "CM-", // GMMR Credit Memo only, user also for journal credit memo
+    16: "CM-", // GMMR Credit Memo only, user also for journal, credit memo
+    17: "DR-", // GMMR Credit Memo only, user also for journal, credit memo
   };
   // vat/taxation map
   const taxConfig = {

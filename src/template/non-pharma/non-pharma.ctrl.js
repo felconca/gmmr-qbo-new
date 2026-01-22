@@ -86,17 +86,16 @@ angular
             subtotal: i.gross,
             qbostatus: i.sent_status,
             qboid: i.sent_id,
-            customerref: i.qbopx,
+            customerref: i.pxid > 0 ? i.qbopx : 530,
             fname: i.fname,
             mname: i.mname,
             lname: i.lname,
             suffix: i.suffix,
             gtaxcalc: $qbo.included(),
-            memo: `${i.transtatus} SI - ${i.tranid}\nPatient: ${
-              i.pxid > 0 ? i.completepx : "Walk-In Patient"
-            }\nCreated By: ${i.ufname} ${i.ulname}`,
+            memo: `${i.transtatus} SI - ${i.tranid}\nPatient: ${i.pxid > 0 ? i.completepx : "Walk-In Patient"
+              }\nCreated By: ${i.ufname} ${i.ulname}`,
           }));
-          // console.log(invoices);
+          console.log(invoices);
           $http
             .post("api/nonpharmacy/book_invoice", { token: token, data: invoices })
             .then((res) => {
@@ -232,7 +231,7 @@ angular
     vm.findInvoice = async function (id) {
       let token = await AuthService.token("accesstoken");
       $http
-        .post("api/nonpharmacy/findInvoice", { token: token, id: id })
+        .post("api/nonpharmacy/find_invoice", { token: token, id: id })
         .then((res) => console.log(res.data))
         .catch((err) => console.error(err));
     };

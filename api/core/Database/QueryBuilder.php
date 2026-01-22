@@ -159,7 +159,7 @@ class QueryBuilder
      * @param array $data  Associative array of column => value
      * @return int|bool     Inserted ID on success, false on failure
      */
-    public function insert($table, array $data)
+    public function INSERT($table, array $data)
     {
         $columns = implode('`, `', array_keys($data));
 
@@ -187,7 +187,7 @@ class QueryBuilder
      * @param array $data Associative array of column => value
      * @return $this
      */
-    public function update($table, array $data)
+    public function UPDATE($table, array $data)
     {
         if (empty($table) || empty($data)) {
             throw new \Exception("Table and data are required for update");
@@ -205,7 +205,7 @@ class QueryBuilder
      * @param string $table Table name
      * @return $this
      */
-    public function delete($table)
+    public function DELETE($table)
     {
         if (empty($table)) {
             throw new \Exception("Table name is required for delete");
@@ -301,6 +301,57 @@ class QueryBuilder
         // SELECT chaining
         return $this;
     }
+    public function OR_WHERE($conditions)
+    {
+        if (!is_array($this->where)) {
+            $this->where = array();
+        }
+
+        if (is_string($conditions)) {
+            $this->where[] = "OR ($conditions)";
+        } elseif (is_array($conditions)) {
+            $orParts = array();
+            foreach ($conditions as $column => $value) {
+                if (is_null($value)) {
+                    $orParts[] = "`$column` IS NULL";
+                } else {
+                    $escaped = $this->conn->real_escape_string($value);
+                    $orParts[] = "`$column` = '$escaped'";
+                }
+            }
+            $this->where[] = "OR (" . implode(' AND ', $orParts) . ")";
+        } else {
+            throw new \InvalidArgumentException("OR_WHERE expects array or raw SQL string");
+        }
+
+        return $this;
+    }
+    public function AND_WHERE($conditions)
+    {
+        if (!is_array($this->where)) {
+            $this->where = array();
+        }
+
+        if (is_string($conditions)) {
+            $this->where[] = "AND ($conditions)";
+        } elseif (is_array($conditions)) {
+            $andParts = array();
+            foreach ($conditions as $column => $value) {
+                if (is_null($value)) {
+                    $andParts[] = "`$column` IS NULL";
+                } else {
+                    $escaped = $this->conn->real_escape_string($value);
+                    $andParts[] = "`$column` = '$escaped'";
+                }
+            }
+            $this->where[] = "AND (" . implode(' AND ', $andParts) . ")";
+        } else {
+            throw new \InvalidArgumentException("AND_WHERE expects array or raw SQL string");
+        }
+
+        return $this;
+    }
+
     public function WHERE_IN($column, array $values)
     {
         if (empty($values)) {
@@ -347,32 +398,6 @@ class QueryBuilder
         return $this;
     }
 
-
-    public function OR_WHERE($conditions)
-    {
-        if (!is_array($this->where)) {
-            $this->where = array();
-        }
-
-        if (is_string($conditions)) {
-            $this->where[] = "OR ($conditions)";
-        } elseif (is_array($conditions)) {
-            $orParts = array();
-            foreach ($conditions as $column => $value) {
-                if (is_null($value)) {
-                    $orParts[] = "`$column` IS NULL";
-                } else {
-                    $escaped = $this->conn->real_escape_string($value);
-                    $orParts[] = "`$column` = '$escaped'";
-                }
-            }
-            $this->where[] = "OR (" . implode(' AND ', $orParts) . ")";
-        } else {
-            throw new \InvalidArgumentException("OR_WHERE expects array or raw SQL string");
-        }
-
-        return $this;
-    }
 
     public function WHERE_BETWEEN($column, $start, $end)
     {

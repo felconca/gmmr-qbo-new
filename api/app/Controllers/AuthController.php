@@ -144,7 +144,6 @@ class AuthController extends Rest
             return $response(["status" => 401, "error" => "Session expired"], 401);
         }
 
-
         // User must exist
         if (!isset($_SESSION['user'])) {
             return $response(["status" => 401, "error" => "Not logged in"], 401);
@@ -153,13 +152,24 @@ class AuthController extends Rest
         // Refresh activity timestamp (rolling session)
         $_SESSION['LAST_ACTIVITY'] = time();
 
+        // **ADD THIS: Refresh the session cookie's expiration**
+        $cookieParams = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            session_id(),
+            time() + $timeout, // Extend cookie lifetime
+            $cookieParams['path'],
+            $cookieParams['domain'],
+            $cookieParams['secure'],
+            $cookieParams['httponly']
+        );
+
         return $response([
             "status" => 200,
             "user" => $_SESSION['user'],
             "session" => $_SESSION['LAST_ACTIVITY']
         ], 200);
     }
-
     public function profile($request, $response, $params)
     {
         // Define upload directory

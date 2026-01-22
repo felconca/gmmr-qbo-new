@@ -23,14 +23,21 @@
             <li ui-sref-active="active"><a ui-sref="app.debit-memo" ui-sref-opts="{reload: true}"><i class="ph-fill ph-list-plus"></i><span>Debit Memo</span></a></li>
         </ul>
         <div class="text-light small my-2 px-2">
-            Claims & Payments
+            Advances To
         </div>
         <ul>
+            <li ui-sref-active="active"><a ui-sref="app.advancesto" ui-sref-opts="{reload: true}"><i class="ph-fill ph-person"></i><span>Employees</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.advancesto" ui-sref-opts="{reload: true}"><i class="ph-fill ph-building"></i><span>Affiliated</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.claims" ui-sref-opts="{reload: true}"><i class="ph-fill ph-address-book"></i><span>Claims</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.assistant" ui-sref-opts="{reload: true}"><i class="ph-fill ph-hand-heart"></i><span>Assistant</span></a></li>
+        </ul>
 
-            <li ui-sref-active="active"><a ui-sref="app.claim-assistant" ui-sref-opts="{reload: true}"><i class="ph-fill ph-person"></i><span>Advances To</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="app.claim-assistant" ui-sref-opts="{reload: true}"><i class="ph-fill ph-hand-heart"></i><span>Claims & Assistant</span></a></li>
+        <div class="text-light small my-2 px-2">
+            Payments
+        </div>
+        <ul>
             <li ui-sref-active="active"><a ui-sref="app.payments" ui-sref-opts="{reload: true}"><i class="ph-fill ph-wallet"></i><span>Payments</span></a></li>
-
+            <li ui-sref-active="active"><a ui-sref="app.pos-payments" ui-sref-opts="{reload: true}"><i class="ph-fill ph-cash-register"></i><span>POS Payments</span></a></li>
         </ul>
 
         <div class="text-light small my-2 px-2">

@@ -173,4 +173,38 @@ class InvoicesService
             return [];
         }
     }
+    public function credit_line($id)
+    {
+        $items = $this->conn->wgcentralsupply()
+            ->SELECT(
+                "pd.TranRID AS tranid,
+                pd.OrderDetailRID AS orderid,
+                pd.ProductRID AS productid,
+                pd.SalesTaxRID AS taxid,
+                IFNULL(pd.Remarks, pd.payment_for) AS descriptions,
+                pd.VatAmnt AS vat,
+                pd.line_Discount AS ldiscount,
+                pd.DiscountApplied AS discount,
+                pd.SoldPrice AS price,
+                pd.SoldQty AS qty,
+                pd.GrossLine AS gross,
+                ROUND(pd.UnitCost, 2) AS cost,
+                pd.line_netofvat AS netofvat,
+                pd.ExtendAmount AS netamount,
+                cx.qbo_inv_id AS invid,
+                cx.qbo_cost_id AS costid,
+                cx.qbo_items_id AS itemid,
+                cx.center",
+                "possales_details pd"
+            )
+            ->LEFTJOIN("ipadrbg.lkup_centers cx", "cx.centerRID = pd.centerRIDpbr")
+            ->WHERE("pd.DisLineCanceled = 0")
+            ->WHERE(["pd.TranRID" => $id])
+            ->get();
+        if ($items) {
+            return $items;
+        } else {
+            return [];
+        }
+    }
 }

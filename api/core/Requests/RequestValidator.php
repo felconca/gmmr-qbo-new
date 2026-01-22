@@ -156,15 +156,21 @@ class RequestValidator
                     }
                     break;
 
+                // The 'max' validation rule checks if the value exceeds the specified maximum.
+                // - For strings: checks if length is greater than $ruleValue (maximum number of characters).
+                // - For arrays: checks if count is greater than $ruleValue (maximum number of items).
+                // - For numeric values: checks if value is greater than $ruleValue (maximum numeric value).
                 case 'max':
                     if (is_string($value) && strlen($value) > (int)$ruleValue) {
                         $errors[$field] = "$field maximum $ruleValue characters";
                     }
+
                     if (is_array($value) && count($value) > (int)$ruleValue) {
                         $errors[$field] = "$field maximum $ruleValue items";
                     }
-                    if (is_numeric($value) && $value > $ruleValue) {
-                        $errors[$field] = "$field maximum $ruleValue";
+
+                    if (is_numeric($value) && strlen((string)$value) > (int)$ruleValue) {
+                        $errors[$field] = "$field maximum $ruleValue digits";
                     }
                     break;
             }

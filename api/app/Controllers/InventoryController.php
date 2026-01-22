@@ -74,9 +74,9 @@ class InventoryController extends Rest
 
                     "CONCAT(px.LastName, ', ', px.FirstName) AS lnamefirst",
                     "CONCAT(px.FirstName, ', ', px.LastName) AS fnamefirst",
-                    "CONCAT(px.LastName, ', ', px.FirstName, px.namesuffix) AS lnamefirstsx",
-                    "CONCAT(px.FirstName, ', ', px.LastName, px.namesuffix) AS fnamefirstsx",
-                    "CONCAT(px.FirstName, ' ', IFNULL(SUBSTRING(px.MiddleName,1,1),''), ' ', px.LastName, ' ', px.namesuffix) AS completepx",
+                    "CONCAT(px.LastName, ', ', px.FirstName, IFNULL(px.namesuffix,'')) AS lnamefirstsx",
+                    "CONCAT(px.FirstName, ', ', px.LastName, IFNULL(px.namesuffix,'')) AS fnamefirstsx",
+                    "CONCAT(px.FirstName, ' ', IFNULL(SUBSTRING(px.MiddleName,1,1),''), ' ', px.LastName, ' ', IFNULL(px.namesuffix,'')) AS completepx",
 
                     "px.qbo_px_id AS qbopx",
 
@@ -363,9 +363,9 @@ class InventoryController extends Rest
 
                     "CONCAT(px.LastName, ', ', px.FirstName) AS lnamefirst",
                     "CONCAT(px.FirstName, ', ', px.LastName) AS fnamefirst",
-                    "CONCAT(px.LastName, ', ', px.FirstName, px.namesuffix) AS lnamefirstsx",
-                    "CONCAT(px.FirstName, ', ', px.LastName, px.namesuffix) AS fnamefirstsx",
-                    "CONCAT(px.FirstName, ' ', IFNULL(SUBSTRING(px.MiddleName,1,1),''), ' ', px.LastName, ' ', px.namesuffix) AS completepx",
+                    "CONCAT(px.LastName, ', ', px.FirstName, IFNULL(px.namesuffix, '')) AS lnamefirstsx",
+                    "CONCAT(px.FirstName, ', ', px.LastName, IFNULL(px.namesuffix, '')) AS fnamefirstsx",
+                    "CONCAT(px.FirstName, ' ', IFNULL(SUBSTRING(px.MiddleName,1,1),''), ' ', px.LastName, ' ', IFNULL(px.namesuffix, '')) AS completepx",
 
                     "px.qbo_px_id AS qbopx",
 
