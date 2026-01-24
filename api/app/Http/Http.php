@@ -119,6 +119,11 @@ Route::group(['prefix' => 'advances', 'middleware' => [new AuthSession("user")]]
     // for quickbooks functions
 });
 
+// payments functions
+Route::group(['prefix' => 'payments', 'middleware' => [new AuthSession("user")]], function () {
+    Route::get('walkin', 'PaymentsController@walkin_payments');
+    Route::get('inpatients', 'PaymentsController@inpatient_payments');
+});
 
 // quickbooks
 Route::group(['prefix' => 'quickbooks', 'middleware' => [new AuthSession("user")]], function () {

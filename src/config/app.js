@@ -183,8 +183,6 @@ angular
         data: { breadcrumb: "NonPharma Inventory", pageTitle: "GMMR-QBO | Inventory Return-NonPharma" },
       });
 
-
-
       // credit & debit memo
       $stateProvider.state("app.credit-memo", {
         url: "/credit-memo",
@@ -207,6 +205,30 @@ angular
           },
         },
         data: { breadcrumb: "Debit Memo", pageTitle: "GMMR-QBO | Debit Memo" },
+      });
+
+      // payments
+      $stateProvider.state("app.payments", {
+        url: "/payments",
+        templateUrl: "src/template/payments/inpatients.tpl.php",
+        controller: "paymentsCtrl",
+        resolve: {
+          loadCtrl: function ($ocLazyLoad) {
+            return $ocLazyLoad.load("src/template/payments/payments.ctrl.js");
+          },
+        },
+        data: { breadcrumb: "InPatient Payments", pageTitle: "GMMR-QBO | InPatient Payments" },
+      });
+      $stateProvider.state("app.pos-payments", {
+        url: "/walkin-payments",
+        templateUrl: "src/template/payments/walkin.tpl.php",
+        controller: "paymentsCtrl",
+        resolve: {
+          loadCtrl: function ($ocLazyLoad) {
+            return $ocLazyLoad.load("src/template/payments/payments.ctrl.js");
+          },
+        },
+        data: { breadcrumb: "Walkin Payments", pageTitle: "GMMR-QBO | Walkin Payments" },
       });
 
       // quikcbooks

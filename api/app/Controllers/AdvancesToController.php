@@ -29,7 +29,7 @@ class AdvancesToController extends Rest
         $this->db = new Database();
     }
 
-    public function index($request, $response, $params)
+    public function employee($request, $response, $params)
     {
         try {
             $input = $request->validate([
