@@ -50,7 +50,7 @@ class AdvancesToController extends Rest
                     "p.sent_to_qbo_id AS sent_id",
                     "p.sent_to_qbo_date AS sent_date",
                     "p.sent_to_qbo_amt AS booked_amt",
-                    "p.sent_to_qbo_update_amt AS updated_amt",
+                    "p.sent_to_qbo_amt AS updated_amt",
                     "p.TranStatus AS tstatus",
 
                     "SUM(pd.line_Discount) AS ldiscount",
@@ -94,7 +94,10 @@ class AdvancesToController extends Rest
                 ->WHERE("p.TranStatus = 22")
                 ->WHERE("cm.creditto > 0")
                 ->WHERE("cm.Deleted = 0")
-                ->WHERE_NOT_IN("cxto.PersonDataType", ['PATIENT', 'Patient', 'HMO', 'Corporate Acct', 'Health Facility', 'Assistance'])
+                ->WHERE_NOT_IN(
+                    "cxto.PersonDataType",
+                    ['PATIENT', 'Patient', 'HMO', 'Corporate Acct', 'Health Facility', 'Assistance']
+                )
                 ->WHERE_NOT_IN("p.PxRID", [1993, 1999, 14336])
                 ->WHERE_BETWEEN("p.TranDate", $start_dt, $end_dt);
 
@@ -109,4 +112,6 @@ class AdvancesToController extends Rest
             return $response(["status" => 400, "error" => $e->getMessage()], 400);
         }
     }
+
+    public function debit_employee($refno) {}
 }

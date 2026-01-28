@@ -111,11 +111,10 @@ Route::group(['prefix' => 'returns', 'middleware' => [new AuthSession("user")]],
 // advances functions
 Route::group(['prefix' => 'advances', 'middleware' => [new AuthSession("user")]], function () {
     // gmmr functions
-    Route::get('list', 'AdvancesToController@index');
-    Route::post('edit', 'AdvancesToController@edit');
-    Route::post('book_returns', 'AdvancesToController@book_returns');
-    Route::post('delete_returns', 'AdvancesToController@delete_returns');
-    Route::post('find_returns', 'AdvancesToController@find_returns');
+    Route::get('employee', 'AdvancesToController@employee');
+    Route::get('affiliated', 'AdvancesToController@affiliated');
+    Route::get('assistance', 'AdvancesToController@assistance');
+    Route::get('claims', 'AdvancesToController@claims');
     // for quickbooks functions
 });
 
