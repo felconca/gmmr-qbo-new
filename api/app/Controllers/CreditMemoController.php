@@ -440,13 +440,13 @@ class CreditMemoController extends Rest
             $amount = (isset($list["vat"]) && $list["vat"] > 0)
                 ? (isset($list["gross"]) && $list["gross"] ? abs($list["gross"] / 1.12) : 0)
                 : (isset($list["gross"]) ? abs($list["gross"]) : 0);
-
+            $itemid = $qbo->cm_to_salary($list["center"], $list["descriptions"], $list["itemid"]);
             $lines[] = [
                 "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
                 "DetailType" => "SalesItemLineDetail",
                 "SalesItemLineDetail" => [
                     "TaxInclusiveAmt" => $gross,
-                    "ItemRef" => ["value" => $list["itemid"]],
+                    "ItemRef" => ["value" => $itemid],
                     "TaxCodeRef" => [
                         "value" => (isset($list["vat"]) && $list["vat"] > 0) ? $qbo->vat("vat-s") : $qbo->vat("vat-ex")
                     ],

@@ -139,6 +139,30 @@ class QboEntityService
         return ["status" => $qb['status'], "details" => $qb['data'][$entity]];
     }
 
+    public function cm_to_salary($center, $description, $itemid)
+    {
+        if ($center === 'CREDIT MEMO') {
+            $normalized = strtolower($description);
+            $normalized = preg_replace('/[^a-z]/', '', $normalized);
+            if (
+                strpos($normalized, 'salary') !== false &&
+                strpos($normalized, 'deduct') !== false
+            ) {
+                return 45;
+            }
+
+            // $normalized = strtolower($description);
+            // $normalized = preg_replace('/[^a-z]/', '', $normalized);
+
+            // if (strpos($normalized, 'salarydeduction') !== false) {
+            //     return 45;
+            // }
+        }
+
+        return $itemid;
+    }
+
+
     // public function jnrid($id)
     // {
     //     // Return cost and inventory IDs for a given department code

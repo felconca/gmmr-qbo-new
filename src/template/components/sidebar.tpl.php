@@ -26,10 +26,10 @@
             Advances To
         </div>
         <ul>
-            <li ui-sref-active="active"><a ui-sref="app.advances.employee" ui-sref-opts="{reload: true}"><i class="ph-fill ph-person"></i><span>Employees</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="app.advances.affiliated" ui-sref-opts="{reload: true}"><i class="ph-fill ph-building"></i><span>Affiliated</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="app.advances.claims" ui-sref-opts="{reload: true}"><i class="ph-fill ph-address-book"></i><span>Claims</span></a></li>
-            <li ui-sref-active="active"><a ui-sref="app.advances.assistant" ui-sref-opts="{reload: true}"><i class="ph-fill ph-hand-heart"></i><span>Assistant</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.employee" ui-sref-opts="{reload: true}"><i class="ph-fill ph-person"></i><span>Employees</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.affiliated" ui-sref-opts="{reload: true}"><i class="ph-fill ph-building"></i><span>Affiliated</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.claims" ui-sref-opts="{reload: true}"><i class="ph-fill ph-address-book"></i><span>Claims</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.assistant" ui-sref-opts="{reload: true}"><i class="ph-fill ph-hand-heart"></i><span>Assistant</span></a></li>
         </ul>
 
         <div class="text-light small my-2 px-2">

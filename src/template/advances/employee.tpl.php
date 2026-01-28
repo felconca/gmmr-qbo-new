@@ -2,59 +2,83 @@
     <div>
         <breadcrumbs></breadcrumbs>
         <h4 class="fw-semibold text-dark">Advances To Employee</h4>
-
     </div>
 
     <div class="d-flex align-items-center" style="gap:10px">
         <div class="text-white d-flex align-items-center">
-            <span class="text-dark" ng-class="{'text-muted':selectedItems.length <= 0}">{{selectedItems.length}} selected</span>
+            <span class="text-dark" ng-class="{'text-muted': selectedItems.length === 0}">{{selectedItems.length}} selected</span>
         </div>
         <hr class="vr">
         <div class="d-flex align-items-center justify-content-end" style="gap:6px">
-            <button class="btn btn-theme-dark" ng-click="handleBookItems(selectedItems)" ng-disabled="selectedItems.length <= 0 || isSending">
+            <button
+                class="btn btn-theme-dark"
+                ng-click="handleBookItems(selectedItems)"
+                ng-disabled="selectedItems.length === 0 || isSending">
                 <i class="ph-bold ph-share-fat me-1"></i>
                 Book/Re-Book
             </button>
-            <button class="btn btn-danger text-white" ng-click="handleUnBookedItems(selectedItems)" ng-disabled="selectedItems.length <= 0 || isSending">
-                <i class="ph-bold ph-trash text-white me-1"></i>Unbooked
+            <button
+                class="btn btn-danger text-white"
+                ng-click="handleUnBookedItems(selectedItems)"
+                ng-disabled="selectedItems.length === 0 || isSending">
+                <i class="ph-bold ph-trash text-white me-1"></i>
+                Unbooked
             </button>
         </div>
     </div>
-
-
 </div>
 <!-- filter -->
 <div class="d-flex align-items-end justify-content-between mt-3" style="gap:6px">
     <div class="w-50">
-        <div class="input-form-grp bg-white" ng-disabled="isFiltering || isSending" style="width: 300px;">
-            <input type="text" placeholder="Search" ng-model="search" ng-model-options="{ debounce: 500 }" ng-disabled="isFiltering || isSending">
-            <i class='bx bx-search-alt-2'></i>
+        <div class="input-form-grp bg-white" style="width: 300px;">
+            <input
+                type="text"
+                placeholder="Search"
+                ng-model="search"
+                ng-model-options="{ debounce: 500 }"
+                ng-disabled="isFiltering || isSending">
+            <i class="bx bx-search-alt-2"></i>
         </div>
     </div>
     <div class="w-50">
         <div class="d-flex align-items-end justify-content-end" style="gap: 6px;">
             <div class="filter-input" style="width: 145px;">
                 <span>Status</span>
-                <select class="input-form" ng-model="filtered.isBooked" ng-disabled="isFiltering || isSending">
-                    <option ng-value="-1">All Status</option>
-                    <option ng-value="0">Not Booked</option>
-                    <option ng-value="1">Booked</option>
-                    <option ng-value="2">Modified</option>
-                    <option ng-value="4">Failed</option>
-                    <option ng-value="5">Unbooked</option>
+                <select
+                    class="input-form"
+                    ng-model="filtered.isBooked"
+                    ng-disabled="isFiltering || isSending">
+                    <option value="-1">All Status</option>
+                    <option value="0">Not Booked</option>
+                    <option value="1">Booked</option>
+                    <option value="2">Modified</option>
+                    <option value="4">Failed</option>
+                    <option value="5">Unbooked</option>
                 </select>
             </div>
             <div class="filter-input" style="width: 150px;">
                 <span>Date From:</span>
-                <input type="date" class="input-form" ng-model="filtered.startDate" date-input ng-disabled="isFiltering || isSending">
+                <input
+                    type="date"
+                    class="input-form"
+                    ng-model="filtered.startDate"
+                    date-input
+                    ng-disabled="isFiltering || isSending">
             </div>
             <div class="filter-input" style="width: 150px;">
                 <span>Date To:</span>
-                <input type="date" class="input-form" ng-model="filtered.endDate" date-input ng-disabled="isFiltering || isSending">
+                <input
+                    type="date"
+                    class="input-form"
+                    ng-model="filtered.endDate"
+                    date-input
+                    ng-disabled="isFiltering || isSending">
             </div>
-            <button class="btn btn-theme-dark" ng-click="handleFilter(filtered)"
+            <button
+                class="btn btn-theme-dark"
+                ng-click="handleFilter(filtered, 'employee')"
                 ng-disabled="isFiltering || isSending">
-                <img ng-if="isFiltering" style="width:20px; height:20px" src="src/assets/img/loader_24x.svg" alt="">
+                <img ng-if="isFiltering" style="width:20px; height:20px" src="src/assets/img/loader_24x.svg" alt="Loading...">
                 <span ng-if="!isFiltering" class="text-white">GO</span>
             </button>
         </div>
@@ -67,12 +91,17 @@
         <thead class="position-sticky top-0" id="table-print">
             <tr>
                 <th width="1%" class="text-center" style="font-size: 13px;">
-                    <input ng-disabled="isFiltering || isSending" type="checkbox" class="form-check-input" ng-model="selectAll" ng-click="handleSelectAllItems(searched)">
+                    <input
+                        ng-disabled="isFiltering || isSending"
+                        type="checkbox"
+                        class="form-check-input"
+                        ng-model="selectAll"
+                        ng-click="handleSelectAllItems(searched)">
                 </th>
                 <th width="1%" nowrap>Date</th>
                 <th width="1%" nowrap>Ref. No.</th>
                 <th nowrap>Patients</th>
-                <th width="10%">Credit To</th>
+                <th width="10%" nowrap>Credit To</th>
                 <th width="10%">Created By</th>
                 <th class="text-center" width="10%">Status</th>
                 <th class="text-start" width="10%" nowrap>Last Booked</th>
@@ -85,49 +114,83 @@
         <tbody>
             <tr ng-repeat="items in searched = (employeeList | filter: search) | limitTo:itemsPerPage:itemsPerPage*(currentPage-1) track by $index">
                 <td>
-                    <input type="checkbox" ng-disabled="isLoading == true || isSending == true" class="form-check-input"
-                        ng-model="items.selected" ng-click="handleSelectItem(items)">
+                    <input
+                        type="checkbox"
+                        ng-disabled="isLoading || isSending"
+                        class="form-check-input"
+                        ng-model="items.selected"
+                        ng-click="handleSelectItem(items)">
                 </td>
                 <td nowrap>{{items.trandate | date:"MM/dd/yy"}}</td>
                 <td nowrap>
-                    <a class="link-anchor" ng-click="showCreditModal(items.tranid)" ng-disabled="isSending">{{items.cmid}}</a>
+                    <a
+                        class="link-anchor"
+                        ng-click="showCreditModal(items.tranid)"
+                        ng-disabled="isSending">{{items.cmid}}</a>
                 </td>
                 <td nowrap>
-                    <span ng-if="items.pxid == 0">- Walk-In Patient -</span>
+                    <span ng-if="items.pxid === 0">- Walk-In Patient -</span>
                     <div class="d-flex align-items-center" ng-if="items.pxid > 0">
                         <a tooltip="Mapped to qbo customer" flow="right">
-                            <i class="ph-fill ph-seal-check text-success me-2" ng-if="items.qbopx > 0"></i>
+                            <i
+                                class="ph-fill ph-seal-check text-success me-2"
+                                ng-if="items.qbopx > 0"></i>
                         </a>
-                        {{items.fname}} {{items.mname.substring(0, 1)}}. {{items.lname}} {{items.suffix}}
+                        {{items.fname}}
+                        <span ng-if="items.mname && items.mname.length > 0">
+                            &nbsp;{{items.mname.substring(0, 1)}}.
+                        </span>
+                        {{items.lname}} {{items.suffix}}
                     </div>
                 </td>
-                <td>{{items.employee}}</td>
-                <td nowrap>{{items.ufname.substring(0, 1)}}. {{items.ulname}}</td>
-                <td nowrap class="text-center">
-                    <span class="status {{ sentStatusClass(items.sent_status) }}">{{ sentStatus(items.sent_status) }}</span>
+                <td nowrap>{{items.employee}}</td>
+                <td nowrap>
+                    <span ng-if="items.ufname && items.ufname.length > 0">{{items.ufname.substring(0, 1)}}.</span>
+                    {{items.ulname}}
                 </td>
-                <td nowrap>{{items.sent_date?toISO(items.sent_date):'—' | date:'MMM dd, yyyy hh:mm a'}}</td>
+                <td nowrap class="text-center">
+                    <span class="status {{sentStatusClass(items.sent_status)}}">{{sentStatus(items.sent_status)}}</span>
+                </td>
+                <td nowrap>
+                    <span ng-if="items.sent_date && items.sent_date !== ''">{{toISO(items.sent_date) | date:'MMM dd, yyyy hh:mm a'}}</span>
+                    <span ng-if="!items.sent_date || items.sent_date === ''">—</span>
+                </td>
                 <td nowrap class="text-end">{{items.netamount | number:2}}</td>
                 <td nowrap class="text-end">{{items.booked_amt | number:2}}</td>
                 <td nowrap class="text-end">{{items.updated_amt | number:2}}</td>
                 <td class="text-center">
                     <div class="dropdown">
-                        <button ng-disabled="selectedItems.length > 0 || isSending" class="btn btn-sm btn-theme-dark dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button
+                            ng-disabled="selectedItems.length > 0 || isSending"
+                            class="btn btn-sm btn-theme-dark dropdown-toggle"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">
                             Actions
                         </button>
                         <ul class="dropdown-menu btn-action">
                             <li>
-                                <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="handleBookItems([items])">
+                                <button
+                                    class="dropdown-item py-2 d-flex align-items-center"
+                                    type="button"
+                                    ng-click="handleBookItems([items])">
                                     <i class="ph-bold ph-share-fat me-2"></i>Book/Re-Book
                                 </button>
                             </li>
                             <li>
-                                <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="showCreditModal(items.tranid)">
+                                <button
+                                    class="dropdown-item py-2 d-flex align-items-center"
+                                    type="button"
+                                    ng-click="showCreditModal(items.tranid)">
                                     <i class="ph-bold ph-pencil-line me-2"></i>GMMR Details
                                 </button>
                             </li>
                             <li>
-                                <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="findCredit(items.sent_id)" ng-disabled="items.sent_id == 0">
+                                <button
+                                    class="dropdown-item py-2 d-flex align-items-center"
+                                    type="button"
+                                    ng-click="findCredit(items.sent_id)"
+                                    ng-disabled="!items.sent_id || items.sent_id === 0">
                                     <i class="ph-bold ph-notebook me-2"></i>QBO Details
                                 </button>
                             </li>
@@ -135,19 +198,27 @@
                                 <hr class="dropdown-divider">
                             </li>
                             <li>
-                                <button class="dropdown-item py-2 d-flex align-items-center text-danger delete" type="button" ng-click="handleUnBookedItems([items])" ng-disabled="items.sent_id == 0">
+                                <button
+                                    class="dropdown-item py-2 d-flex align-items-center text-danger delete"
+                                    type="button"
+                                    ng-click="handleUnBookedItems([items])"
+                                    ng-disabled="!items.sent_id || items.sent_id === 0">
                                     <i class="ph-bold ph-trash me-2 text-danger"></i>Unbooked
                                 </button>
-                            </li>
                             </li>
                         </ul>
                     </div>
                 </td>
             </tr>
+            <tr ng-if="searched.length === 0">
+                <td colspan="12" class="text-center text-muted py-4">
+                    No records found.
+                </td>
+            </tr>
         </tbody>
         <tfoot class="position-sticky bottom-0" ng-hide="isFiltering || isSending">
             <tr>
-                <td colspan="7" class="fw-bold">Total</td>
+                <td colspan="8" class="fw-bold">Total</td>
                 <td class="fw-bold text-end">{{getTotal(searched, 'netamount') | number:2}}</td>
                 <td class="fw-bold text-end">{{getTotal(searched, 'booked_amt') | number:2}}</td>
                 <td class="fw-bold text-end">{{getTotal(searched, 'updated_amt') | number:2}}</td>
@@ -160,10 +231,20 @@
 <div class="d-flex align-items-center justify-content-between pt-3">
     <span>
         Showing {{
-        searched.length > 0 ? formatNumber((currentPage - 1) * itemsPerPage + 1) : 0
+            searched.length > 0 ? formatNumber((currentPage - 1) * itemsPerPage + 1) : 0
         }} to {{
             searched.length > 0 ? formatNumber(Math.min(currentPage * itemsPerPage, searched.length)) : 0
         }} of {{formatNumber(searched.length)}} entries
     </span>
-    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages" items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(creditMemosList)"></ul>
+    <ul
+        style="margin-bottom: 0 !important;"
+        uib-pagination
+        total-items="searched.length"
+        num-pages="numPages"
+        items-per-page="itemsPerPage"
+        ng-model="currentPage"
+        max-size="5"
+        boundary-link-numbers="true"
+        ng-change="changePage(employeeList)">
+    </ul>
 </div>

@@ -232,34 +232,50 @@ angular
       });
 
       // advances
-      $stateProvider.state("app.advances", {
-        abstract: true,
-        templateUrl: "src/template/advances/layout.tpl.php",
-        controller: "advancesCtrl",
-        resolve: {
-          loadCtrl: function ($ocLazyLoad) {
-            return $ocLazyLoad.load("src/template/advances/advances.ctrl.js");
+      $stateProvider
+        .state("app.employee", {
+          url: "/employee",
+          templateUrl: "src/template/advances/employee.tpl.php",
+          controller: "advancesCtrl",
+          resolve: {
+            loadCtrl: function ($ocLazyLoad) {
+              return $ocLazyLoad.load("src/template/advances/advances.ctrl.js");
+            },
           },
-        },
-        data: { breadcrumb: "Advances To", pageTitle: "GMMR-QBO | Advances To" },
-      }).state("app.advances.employee", {
-        url: "/employee",
-        templateUrl: "src/template/advances/employee.tpl.php",
-        data: { breadcrumb: "Employee", pageTitle: "GMMR-QBO | Advances - Employee" },
-      })
-        .state("app.advances.affiliated", {
+          data: { breadcrumb: "Employee", pageTitle: "GMMR-QBO | Advances - Employee" },
+        })
+        .state("app.affiliated", {
           url: "/affiliated",
           templateUrl: "src/template/advances/affiliated.tpl.php",
+          controller: "advancesCtrl",
+          resolve: {
+            loadCtrl: function ($ocLazyLoad) {
+              return $ocLazyLoad.load("src/template/advances/advances.ctrl.js");
+            },
+          },
           data: { breadcrumb: "Affiliated", pageTitle: "GMMR-QBO | Advances - Affiliated" },
+
         })
-        .state("app.advances.assistant", {
+        .state("app.assistant", {
           url: "/assistant",
           templateUrl: "src/template/advances/assistant.tpl.php",
+          controller: "advancesCtrl",
+          resolve: {
+            loadCtrl: function ($ocLazyLoad) {
+              return $ocLazyLoad.load("src/template/advances/advances.ctrl.js");
+            },
+          },
           data: { breadcrumb: "Assistant", pageTitle: "GMMR-QBO | Advances - Assistant" },
         })
-        .state("app.advances.claims", {
+        .state("app.claims", {
           url: "/claims",
           templateUrl: "src/template/advances/claims.tpl.php",
+          controller: "advancesCtrl",
+          resolve: {
+            loadCtrl: function ($ocLazyLoad) {
+              return $ocLazyLoad.load("src/template/advances/advances.ctrl.js");
+            },
+          },
           data: { breadcrumb: "Claims", pageTitle: "GMMR-QBO | Advances - Claims" },
         })
 

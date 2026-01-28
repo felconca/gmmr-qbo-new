@@ -112,6 +112,7 @@ Route::group(['prefix' => 'returns', 'middleware' => [new AuthSession("user")]],
 Route::group(['prefix' => 'advances', 'middleware' => [new AuthSession("user")]], function () {
     // gmmr functions
     Route::get('employee', 'AdvancesToController@employee');
+    Route::get('employee/edit', 'AdvancesToController@edit');
     Route::get('affiliated', 'AdvancesToController@affiliated');
     Route::get('assistance', 'AdvancesToController@assistance');
     Route::get('claims', 'AdvancesToController@claims');
