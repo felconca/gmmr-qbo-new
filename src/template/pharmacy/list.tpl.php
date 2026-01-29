@@ -84,6 +84,7 @@
                  <th width="10%">Created By</th>
                  <th width="10%">GMMR Status</th>
                  <th class="text-center" width="10%">Status</th>
+                 <th class="text-center" width="10%">Payment Linked</th>
                  <th class="text-start" width="10%" nowrap>Last Booked</th>
                  <th class="text-end" width="5%" nowrap>Amount</th>
                  <th class="text-end" width="5%" nowrap>Booked Amt</th>
@@ -115,6 +116,7 @@
                  <td nowrap class="text-center">
                      <span class="status {{ sentStatusClass(items.sent_status) }}">{{ sentStatus(items.sent_status) }}</span>
                  </td>
+                 <td class="text-center">{{items.pay_id > 0 ? 'Linked' : 'Not Linked'}}</td>
                  <td nowrap>{{items.sent_date?toISO(items.sent_date):'—' | date:'MMM dd, yyyy hh:mm a'}}</td>
                  <td nowrap class="text-end">{{items.netamount | number:2}}</td>
                  <td nowrap class="text-end">{{items.booked_amt | number:2}}</td>
@@ -128,6 +130,13 @@
                              <li>
                                  <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="handleBookItems([items])">
                                      <i class="ph-bold ph-share-fat me-2"></i>Book/Re-Book
+                                 </button>
+                             </li>
+                             <li>
+                                 <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="linkInvoiceToPayment(items.sent_id)"
+                                     ng-if="items.sent_id > 0 && items.tstatus == 9"
+                                     ng-disabled="items.pay_id > 0">
+                                     <i class="ph-bold ph-link-simple me-2"></i>Link Payment
                                  </button>
                              </li>
                              <li>
@@ -156,7 +165,7 @@
          </tbody>
          <tfoot class="position-sticky bottom-0" ng-hide="isFiltering || isSending">
              <tr>
-                 <td colspan="8" class="fw-bold">Total</td>
+                 <td colspan="9" class="fw-bold">Total</td>
                  <td class="fw-bold text-end">{{getTotal(searched, 'netamount') | number:2}}</td>
                  <td class="fw-bold text-end">{{getTotal(searched, 'booked_amt') | number:2}}</td>
                  <td class="fw-bold text-end">{{getTotal(searched, 'updated_amt') | number:2}}</td>

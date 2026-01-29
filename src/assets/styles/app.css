@@ -1282,3 +1282,8 @@ option:active {
   color: #2c2e3b;
   font-size: 16px;
 }
+.dropdown-item:disabled i {
+  color: var(--bs-dropdown-link-disabled-color);
+  pointer-events: none;
+  background-color: transparent;
+}

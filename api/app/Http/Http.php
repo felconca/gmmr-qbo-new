@@ -37,6 +37,7 @@ Route::group(['prefix' => 'pharmacy', 'middleware' => [new AuthSession("user")]]
     Route::get('edit', 'PharmacyController@edit');
     Route::get('details', 'PharmacyController@details');
     Route::post('update', 'PharmacyController@update');
+    Route::post('linked', 'PharmacyController@link_to_payment');
 
     // for quickbooks functions
     Route::post('book_invoice', 'PharmacyController@book_invoice');

@@ -139,6 +139,8 @@ class QboEntityService
         return ["status" => $qb['status'], "details" => $qb['data'][$entity]];
     }
 
+
+
     public function cm_to_salary($center, $description, $itemid)
     {
         if ($center === 'CREDIT MEMO') {
