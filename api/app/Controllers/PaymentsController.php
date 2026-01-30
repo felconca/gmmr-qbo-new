@@ -63,6 +63,7 @@ class PaymentsController extends Rest
                     "p.sent_to_qbo_pay_amt AS booked_amt",
                     "p.sent_to_qbo_pay_update_amt AS updated_amt",
                     "p.TranStatus AS tstatus",
+                    "p.NetAmountDue AS amount_due",
                     "IFNULL(p.Remarks, '') AS remarks",
                     "IFNULL(p.Payment_for,'') AS payfor",
 
@@ -143,8 +144,8 @@ class PaymentsController extends Rest
                     "p.sent_to_qbo_pay_amt AS booked_amt",
                     "p.sent_to_qbo_pay_update_amt AS updated_amt",
                     "p.TranStatus AS tstatus",
-                    "IFNULL(p.Remarks, '') AS remarks",
-                    "IFNULL(p.Payment_for,'') AS payfor",
+                    "IFNULL(p.Remarks, pd.Remarks) AS remarks",
+                    "IFNULL(p.Payment_for, pd.payment_for) AS payfor",
 
                     "SUM(pd.line_Discount) AS ldiscount",
                     "SUM(pd.DiscountApplied) AS discount",
@@ -333,7 +334,132 @@ class PaymentsController extends Rest
             ], 400);
         }
     }
-    public function book_walkin($request, $response) {}
+    public function book_walkin($request, $response)
+    {
+        try {
+            $qboService = new QboCustomerService($this->db, $this->companyId);
+            $invoiceService = new InvoicesService($this->db);
+
+            $input = $request->validate([
+                "data"               => "required|array|min:1",
+                "token"              => "required",
+                "data.*.amount"      => "required|float",
+                "data.*.customerref" => "numeric",
+                "data.*.depositref"  => "required",
+                "data.*.gstatus"     => "string",
+                "data.*.memo"        => "string",
+                "data.*.methodref"   => "required|int|min:1",
+                "data.*.qboid"       => "numeric",
+                "data.*.qbostatus"   => "numeric",
+                "data.*.tranid"      => "required|int|min:1",
+                "data.*.txndate"     => "required|date",
+                "data.*.line"        => "required|array|min:1",
+            ]);
+
+            $payments = $input["data"];
+            $token = $input["token"];
+            $hasErrors = false;
+            $results = [];
+
+            foreach ($payments as $row) {
+                QBO::setAuth($this->companyId, $token);
+                $updateData = [
+                    "tranid" => $row["tranid"],
+                    "amount" => $row["amount"],
+                    "qboid"  => 0,
+                ];
+
+                try {
+                    $qbo = new QboEntityService($this->db, $this->companyId);
+                    $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
+                    $isUpdate = $qboid > 0;
+                    $action = $isUpdate ? QBO::update() : QBO::create();
+
+                    if (isset($row['pxid']) && $row['pxid'] == 0) {
+                        $customer = 530;
+                    } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
+                        $customer = $row['customerref'];
+                    } else {
+                        $customer = $qboService->createCustomer([
+                            "token"  => $token,
+                            "pxid"   => $row["pxid"],
+                            "fname"  => $row["fname"],
+                            "lname"  => $row["lname"],
+                            "mname"  => isset($row["mname"]) ? $row["mname"] : null,
+                            "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
+                        ]);
+                    }
+
+                    $payment = [
+                        "TxnDate" => $row['txndate'],
+                        "TotalAmt" => $row['amount'],
+                        "PaymentRefNum" => $row['refnum'],
+                        "PaymentMethodRef" => ["value" => $row["methodref"]],
+                        "DepositToAccountRef" => ["value" => $row["depositref"]],
+                        "CustomerRef" => ["value" => $customer],
+                        "PrivateNote" => $row['memo'],
+                        "Line" =>  $row['line']
+                    ];
+
+                    if ($isUpdate) {
+                        $payment['Id'] = $qboid;
+                        $payment['sparse'] = true;
+                        $synctoken = $qbo->synctoken($row["qboid"], $token, "Payment");
+
+                        if ($synctoken) {
+                            $payment["SyncToken"] = $synctoken['synctoken'];
+                        } else {
+                            throw new \Exception("SyncToken missing for QBO update");
+                        }
+                    }
+
+                    $result = $action->Payment($payment);
+
+                    if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
+                        $updateData["status"] = 4;
+                        $updateData["qboid"] = $isUpdate ? $qboid : 0;
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "failed",
+                            "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+                        ];
+                        $hasErrors = true;
+                    } else {
+                        $updateData["status"] = $qboid == 0 ? 1 : 2;
+                        $updateData["qboid"] = isset($result["data"]["Payment"]["Id"]) ? $result["data"]["Payment"]["Id"] : ($qboid ?: null);
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "success",
+                            "qboid" => $updateData["qboid"]
+                        ];
+                    }
+
+                    $invoiceService->update_pay_walkin($updateData, "wgfinance");
+                } catch (Exception $e) {
+                    $updateData["status"] = 4;
+                    $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
+                    $invoiceService->update_pay_walkin($updateData, "wgfinance");
+
+                    $results[] = [
+                        "tranid" => $row["tranid"],
+                        "status" => "failed",
+                        "error" => $e->getMessage()
+                    ];
+                    $hasErrors = true;
+                }
+            }
+
+            return $response([
+                "status" => $hasErrors ? 400 : 200,
+                "results" => $results
+            ], $hasErrors ? 400 : 200);
+        } catch (Exception $e) {
+            return $response([
+                "status" => 400,
+                "error" => $e->getMessage()
+            ], 400);
+        }
+    }
     public function unbook_payments($request, $response, $params)
     {
         $invoiceService = new InvoicesService($this->db);

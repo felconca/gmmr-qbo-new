@@ -10,11 +10,11 @@
             </div>
             <hr class="vr">
             <div class="d-flex align-items-center" style="gap:6px">
-                <button class="btn btn-theme-dark" ng-click="handleBookItems(selectedItems)" ng-disabled="selectedItems.length <= 0 || isSending">
+                <button class="btn btn-theme-dark" ng-click="bookWalkin(selectedItems)" ng-disabled="selectedItems.length <= 0 || isSending">
                     <i class="ph-bold ph-share-fat me-1"></i>
                     Book/Re-Book
                 </button>
-                <button class="btn btn-danger text-white" ng-click="handleUnBookedItems(selectedItems)" ng-disabled="selectedItems.length <= 0 || isSending">
+                <button class="btn btn-danger text-white" ng-click="unbookWalkin(selectedItems)" ng-disabled="selectedItems.length <= 0 || isSending">
                     <i class="ph-bold ph-trash text-white me-1"></i>Unbooked
                 </button>
             </div>
@@ -132,7 +132,7 @@
                         </button>
                         <ul class="dropdown-menu btn-action">
                             <li>
-                                <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="handleBookItems([items])">
+                                <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="bookWalkin([items])">
                                     <i class="ph-bold ph-share-fat me-2"></i>Book/Re-Book
                                 </button>
                             </li>
@@ -150,7 +150,7 @@
                                 <hr class="dropdown-divider">
                             </li>
                             <li>
-                                <button class="dropdown-item py-2 d-flex align-items-center text-danger delete" type="button" ng-click="handleUnBookedItems([items])">
+                                <button class="dropdown-item py-2 d-flex align-items-center text-danger delete" type="button" ng-click="unbookWalkin([items])">
                                     <i class="ph-bold ph-trash me-2 text-danger"></i>Unbooked
                                 </button>
                             </li>

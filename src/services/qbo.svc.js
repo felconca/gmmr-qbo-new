@@ -38,13 +38,13 @@ angular.module("app").factory("$qbo", function () {
   };
   function methodref(ref = 0) {
     switch (ref) {
-      case 0:  // cash
+      case 0: // cash
         return 1;
-      case 4:  // check
+      case 4: // check
         return 2;
-      case 2:  // credit card
+      case 2: // credit card
         return 3;
-      case 3:  // debit card
+      case 3: // debit card
         return 4;
       case 19: // gcash
         return 5;
@@ -53,8 +53,31 @@ angular.module("app").factory("$qbo", function () {
       case 22: // bank
         return 7;
       default:
-        return null;
+        return 1;
     }
+  }
+
+  function walkMethod(ref) {
+    // method (1-cash, 2-check, 3-credit, 4-direct debit, 5-gcash, 6-maya, 7-bank transfer)
+    switch (ref) {
+      case 0: // cash
+        return 1;
+      case 3: //check
+        return 2;
+      case 2: // credit card
+        return 3;
+      case 12: // debit card
+        return 4;
+      case 19: // gcash
+        return 5;
+      case 20: // maya
+        return 6;
+      case 22: //bank
+        return 7;
+      default:
+        return 1;
+    }
+    return method;
   }
   function depositref(typeid = 0) {
     if (typeid == 2) {
@@ -73,6 +96,7 @@ angular.module("app").factory("$qbo", function () {
     outscope: () => taxConfig.outscope,
     depositref: depositref,
     methodref: methodref,
+    walkMethod: walkMethod,
     radiosales: (code, itemid) => {
       const match = radioMap[code];
       return match ? (production ? match.prod : match.dev) : itemid;
