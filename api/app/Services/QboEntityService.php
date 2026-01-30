@@ -139,6 +139,34 @@ class QboEntityService
         return ["status" => $qb['status'], "details" => $qb['data'][$entity]];
     }
 
+    /**
+     * Map payment reference code to method id.
+     * 1-cash, 2-check, 3-credit, 4-direct debit, 5-gcash, 6-maya, 7-bank transfer
+     *
+     * @param int $ref Payment reference code
+     * @return int|null Mapped method id or null if not mapped
+     */
+    public function handleMethodRef($ref)
+    {
+        switch ($ref) {
+            case 0:  // cash
+                return 1;
+            case 4:  // check
+                return 2;
+            case 2:  // credit card
+                return 3;
+            case 3:  // debit card
+                return 4;
+            case 19: // gcash
+                return 5;
+            case 20: // maya
+                return 6;
+            case 22: // bank
+                return 7;
+            default:
+                return null;
+        }
+    }
 
 
     public function cm_to_salary($center, $description, $itemid)

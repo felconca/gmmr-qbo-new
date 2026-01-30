@@ -176,10 +176,10 @@
 <div class="d-flex align-items-center justify-content-between pt-3">
     <span>
         Showing {{
-        inpatientList.length > 0 ? formatNumber((currentPage - 1) * itemsPerPage + 1) : 0
+        walkinList.length > 0 ? formatNumber((currentPage - 1) * itemsPerPage + 1) : 0
         }} to {{
-            inpatientList.length > 0 ? formatNumber(Math.min(currentPage * itemsPerPage, inpatientList.length)) : 0
-        }} of {{formatNumber(inpatientList.length)}} entries
+            walkinList.length > 0 ? formatNumber(Math.min(currentPage * itemsPerPage, walkinList.length)) : 0
+        }} of {{formatNumber(walkinList.length)}} entries
     </span>
-    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="inpatientList.length" num-pages="numPages" items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(inpatientList)"></ul>
+    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages" items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(walkinList)"></ul>
 </div>

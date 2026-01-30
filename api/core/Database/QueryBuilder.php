@@ -131,6 +131,15 @@ class QueryBuilder
         }
         return $rows;
     }
+    /**
+     * Returns the raw SQL query string constructed for the current query builder state.
+     *
+     * @return string
+     */
+    public function getSql()
+    {
+        return $this->buildQuery();
+    }
 
     public function first()
     {

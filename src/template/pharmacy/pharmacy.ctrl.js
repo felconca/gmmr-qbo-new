@@ -270,41 +270,51 @@ angular
      */
     vm.sentStatusClass = (status) => vm.statusLabelMap[status]?.class || "";
 
-    vm.linkInvoiceToPayment = async (id) => {
-      let token = await AuthService.token("accesstoken");
-      if (token) {
-        $http.post('api/pharmacy/linked', { token: token, id: id }).then(res => {
-          console.log(res)
+    vm.linkInvoiceToPayment = async (items) => {
+      if (items.length > 0) {
+        vm.isSending = true;
+        let token = await AuthService.token("accesstoken");
+        let data = items.map(i => ({ id: i.sent_id }));
+        if (token) {
+          $http.post('api/pharmacy/linked', { token, data })
+            .then(res => {
+              console.log(res.data);
+              Toasty.showToast(
+                "Success",
+                "Invoice payment linked to gmmr successfully",
+                `<i class="ph-fill ph-check-circle"></i>`,
+                5000
+              );
+            })
+            .catch(err => {
+              const success = err.data.results.filter((r) => r.status === "success").length;
+              const failed = err.data.results.filter((r) => r.status === "failed").length;
+              Toasty.showToast(
+                `Attention`,
+                `${success} of ${items.length} invoices were linked.
+                ${failed} invoice(s) failed to processed`,
+                `<i class="ph-fill ph-warning text-warning"></i>`,
+                5000
+              );
+              console.error(`failed:${failed}`, `success:${success}`);
+
+            })
+            .finally(() => {
+              vm.isSending = false;
+              vm.selectAll = false;
+              vm.selectedItems = [];
+              vm.handleInvoiceList(vm.filtered);
+            });
+        } else {
+          vm.isSending = false;
+          vm.selectAll = false;
           Toasty.showToast(
-            "Success",
-            `Invoice payment linked to gmmr successfully`,
-            `<i class="ph-fill ph-check-circle"></i>`,
-            5000
+            "Token Error",
+            "Cannot link invoice(s), token not found",
+            `<i class="ph-fill ph-x-circle text-danger"></i>`,
+            3000
           );
-        }).catch((err) => {
-          Toasty.showToast(
-            `Error`,
-            'Something went wrong!'
-              `<i class="ph-fill ph-x-circle text-danger"></i>`,
-            5000
-          );
-          console.error(err);
-        })
-          .finally(() => {
-            vm.isSending = false;
-            vm.selectAll = false;
-            vm.selectedItems = [];
-            vm.handleInvoiceList(vm.filtered);
-          });
-      } else {
-        vm.isSending = false;
-        vm.selectAll = false;
-        Toasty.showToast(
-          "Token Error",
-          `Cannot book invoice(s), token not found`,
-          `<i class="ph-fill ph-x-circle text-danger"></i>`,
-          3000
-        );
+        }
       }
     }
   });

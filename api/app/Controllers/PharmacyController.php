@@ -57,6 +57,11 @@ class PharmacyController extends Rest
                     "p.sent_to_qbo_amt AS booked_amt",
                     "p.sent_to_qbo_update_amt AS updated_amt",
                     "p.sent_to_qbo_pay_id AS pay_id",
+                    "CASE 
+                        WHEN p.sent_to_qbo_pay_id = 0 AND p.TranStatus = 9 THEN 'Not Linked'
+                        WHEN p.sent_to_qbo_pay_id > 0 AND p.TranStatus = 9 THEN 'Linked'
+                        ELSE '-'
+                        END AS link",
                     "p.TranStatus AS tstatus",
 
                     "SUM(pd.line_Discount) AS ldiscount",
@@ -433,46 +438,83 @@ class PharmacyController extends Rest
     public function link_to_payment($request, $response, $params)
     {
         try {
-            $token = $request["token"];
-            $id = $request["id"];
-            $qbo = new QboEntityService($this->db, $this->companyId);
-            $invoice = $qbo->details($id, $token, "Invoice");
+            $input = $request->validate([
+                "token" => "required|string",
+                "data" => "required|array|min:1",
+                "data.*.id" => "required|int|min:1"
+            ]);
+            $token = $input["token"];
+            $data = $input["data"];
+            $results = [];
+            $hasErrors = false;
 
-            // Check if LinkedTxn exists and get the Payment TxnId if available
-            if (
-                !isset($invoice['details']['LinkedTxn'])
-                || !is_array($invoice['details']['LinkedTxn'])
-                || count($invoice['details']['LinkedTxn']) === 0
-            ) {
-                // No payment created
-                return $response([
-                    'status' => 400,
-                    'error' => 'No payment created for this invoice. (No LinkedTxn found)'
-                ], 400);
-            }
+            foreach ($data as $item) {
+                $id = $item["id"];
+                try {
+                    $qbo = new QboEntityService($this->db, $this->companyId);
+                    $invoice = $qbo->details($id, $token, "Invoice");
 
-            $linkedPaymentTxnId = null;
-            foreach ($invoice['details']['LinkedTxn'] as $txn) {
-                if (isset($txn['TxnType']) && $txn['TxnType'] === 'Payment' && isset($txn['TxnId'])) {
-                    $linkedPaymentTxnId = $txn['TxnId'];
-                    break; // Stop at first match
+                    // Check if LinkedTxn exists and get the Payment TxnId if available
+                    if (
+                        !isset($invoice['details']['LinkedTxn'])
+                        || !is_array($invoice['details']['LinkedTxn'])
+                        || count($invoice['details']['LinkedTxn']) === 0
+                    ) {
+                        $results[] = [
+                            'id' => $id,
+                            'status' => 'failed',
+                            'error' => 'No payment created for this invoice. (No LinkedTxn found)',
+                            'linkedPaymentTxnId' => null,
+                            'details' => $invoice['details'],
+                        ];
+                        $hasErrors = true;
+                        continue;
+                    }
+
+                    $linkedPaymentTxnId = null;
+                    foreach ($invoice['details']['LinkedTxn'] as $txn) {
+                        if (isset($txn['TxnType']) && $txn['TxnType'] === 'Payment' && isset($txn['TxnId'])) {
+                            $linkedPaymentTxnId = $txn['TxnId'];
+                            break; // Stop at first match
+                        }
+                    }
+
+                    // Update the invoice in wgfinance.possales with the linkedPaymentTxnId
+                    if ($linkedPaymentTxnId) {
+                        $this->db->wgfinance()
+                            ->update('possales', [
+                                'sent_to_qbo_pay_id' => $linkedPaymentTxnId,
+                                'sent_to_qbo_pay' => 1
+                            ])
+                            ->WHERE(['sent_to_qbo_id' => $id]);
+                    }
+
+                    $results[] = [
+                        'id' => $id,
+                        'status' => $linkedPaymentTxnId ? 'success' : 'failed',
+                        'linkedPaymentTxnId' => $linkedPaymentTxnId,
+                        'details' => $invoice['details'],
+                    ];
+
+                    if (!$linkedPaymentTxnId) {
+                        $hasErrors = true;
+                    }
+                } catch (\Exception $ex) {
+                    $results[] = [
+                        'id' => $id,
+                        'status' => 'failed',
+                        'error' => $ex->getMessage(),
+                        'linkedPaymentTxnId' => null,
+                        'details' => null,
+                    ];
+                    $hasErrors = true;
                 }
             }
 
-            // Update the invoice in wgfinance.possales with the linkedPaymentTxnId
-            if ($linkedPaymentTxnId) {
-                $this->db->wgfinance()
-                    ->update('possales', ['sent_to_qbo_pay_id' => $linkedPaymentTxnId])
-                    ->WHERE(['sent_to_qbo_id' => $id]);
-            }
-
-            return $response(
-                [
-                    'linkedPaymentTxnId' => $linkedPaymentTxnId,
-                    'details' => $invoice['details']
-                ],
-                $invoice['status']
-            );
+            return $response([
+                'status' => $hasErrors ? 400 : 200,
+                'results' => $results
+            ], $hasErrors ? 400 : 200);
         } catch (\Exception $e) {
             return $response([
                 'status' => 400,

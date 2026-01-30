@@ -96,9 +96,8 @@ angular
             lname: i.lname,
             suffix: i.suffix,
             amount: i.netcost,
-            note: `${i.transtatus} SI - ${i.tranid}\nPatient: ${
-              i.pxid > 0 ? i.completepx : "Walk-In Patient"
-            }\nCreated By: ${i.ufname} ${i.ulname}`,
+            note: `${i.transtatus} SI - ${i.tranid}\nPatient: ${i.pxid > 0 ? i.completepx : "Walk-In Patient"
+              }\nCreated By: ${i.ufname} ${i.ulname}`,
           }));
           //   console.log({ data: inventory, token: token, database: db });
           $http
@@ -147,7 +146,7 @@ angular
             .then((res) => {
               Toasty.showToast(
                 "Success",
-                `Invoice(s) unbooked successfully`,
+                `Inventory(s) unbooked successfully`,
                 `<i class="ph-fill ph-check-circle"></i>`,
                 5000
               );
@@ -158,7 +157,7 @@ angular
               Toasty.showToast(
                 `Attention`,
                 `${success} of ${items.length} inventory were booked.
-                  ${failed} invoice(s) failed to processed`,
+                  ${failed} inventory(s) failed to processed`,
                 `<i class="ph-fill ph-warning text-warning"></i>`,
                 5000
               );
@@ -177,7 +176,7 @@ angular
           vm.getPharmacy(vm.filtered);
           Toasty.showToast(
             "Token Error",
-            `Cannot book invoice(s), token not found`,
+            `Cannot book inventory(s), token not found`,
             `<i class="ph-fill ph-x-circle text-danger"></i>`,
             3000
           );

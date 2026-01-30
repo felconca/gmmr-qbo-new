@@ -2,8 +2,12 @@
 
 namespace App\Controllers;
 
+use App\Services\InvoicesService;
+use App\Services\QboCustomerService;
+use App\Services\QboEntityService;
 use Includes\Rest;
 use Core\Database\Database;
+use QuickBooksOnlineHelper\Facades\QBO;
 
 class PaymentsController extends Rest
 {
@@ -23,6 +27,9 @@ class PaymentsController extends Rest
         parent::__construct();
 
         $this->db = new Database();
+        $this->clientId = isset($_ENV["QBO_CLIENTID"]) ? $_ENV["QBO_CLIENTID"] : NULL;
+        $this->secretId = isset($_ENV["QBO_SECRETID"]) ? $_ENV["QBO_SECRETID"] : NULL;
+        $this->companyId = isset($_ENV["QBO_COMPANYID"]) ? $_ENV["QBO_COMPANYID"] : NULL;
     }
 
     public function index($request, $response, $params)
@@ -175,8 +182,6 @@ class PaymentsController extends Rest
                 ->LEFTJOIN("lookuppaytype pytype", "pytype.PayTypeRID = py.PayTypeRID")
 
                 ->WHERE("(p.pinnedby > 0 OR p.bookedbycashier > 0)")
-                ->WHERE("p.ApprovedBy = 0")
-                ->WHERE("p.NetAmountDue != 0")
                 ->WHERE("pd.DisLineCanceled = 0")
                 ->WHERE(["p.TranStatus" => 14])
                 ->WHERE(["py.cancelled" => 0])
@@ -190,11 +195,220 @@ class PaymentsController extends Rest
                 $invoices->WHERE(["p.sent_to_qbo_pay" => $isbooked]);
             }
 
-            $rows = $invoices->GROUPBY("p.TranRID")->ORDERBY("p.TranRID")->get();
+            $rows = $invoices->GROUPBY("pd.TranRID")->ORDERBY("p.TranRID")->get();
 
             return $response($rows, 200);
         } catch (Exception $e) {
             return $response(["status" => 400, "error" => $e->getMessage()], 400);
+        }
+    }
+    public function book_inpatient($request, $response)
+    {
+        try {
+            $qboService = new QboCustomerService($this->db, $this->companyId);
+            $invoiceService = new InvoicesService($this->db);
+
+            $input = $request->validate([
+                "data"             => "required|array|min:1",
+                "token"            => "required",
+                "data.*.amount"      => "required|float",
+                "data.*.customerref" => "numeric",
+                "data.*.depositref"  => "required",
+                "data.*.fname"       => "required|string",
+                "data.*.gstatus"     => "string",
+                "data.*.lname"       => "required|string",
+                "data.*.memo"        => "string",
+                "data.*.methodref"   => "required|int|min:1",
+                "data.*.mname"       => "string",
+                "data.*.pxid"        => "required|int|min:1",
+                "data.*.qboid"       => "numeric",
+                "data.*.qbostatus"   => "numeric",
+                "data.*.refnum"      => "required|string",
+                "data.*.suffix"      => "string",
+                "data.*.tranid"      => "required|int|min:1",
+                "data.*.txndate"     => "required|date",
+            ]);
+
+            $payments = $input["data"];
+            $token = $input["token"];
+            $hasErrors = false;
+            $results = [];
+
+            foreach ($payments as $row) {
+                QBO::setAuth($this->companyId, $token);
+                $updateData = [
+                    "tranid" => $row["tranid"],
+                    "amount" => $row["amount"],
+                    "qboid"  => 0,
+                ];
+
+                try {
+                    $qbo = new QboEntityService($this->db, $this->companyId);
+                    $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
+                    $isUpdate = $qboid > 0;
+                    $action = $isUpdate ? QBO::update() : QBO::create();
+
+                    if (isset($row['pxid']) && $row['pxid'] == 0) {
+                        $customer = 530;
+                    } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
+                        $customer = $row['customerref'];
+                    } else {
+                        $customer = $qboService->createCustomer([
+                            "token"  => $token,
+                            "pxid"   => $row["pxid"],
+                            "fname"  => $row["fname"],
+                            "lname"  => $row["lname"],
+                            "mname"  => isset($row["mname"]) ? $row["mname"] : null,
+                            "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
+                        ]);
+                    }
+
+                    $payment = [
+                        "TxnDate" => $row['txndate'],
+                        "TotalAmt" => $row['amount'],
+                        "PaymentRefNum" => $row['refnum'],
+                        "PaymentMethodRef" => ["value" => $row["methodref"]],
+                        "DepositToAccountRef" => ["value" => $row["depositref"]],
+                        "CustomerRef" => ["value" => $customer],
+                        "PrivateNote" => $row['memo'],
+                        "Line" => []
+                    ];
+
+                    if ($isUpdate) {
+                        $payment['Id'] = $qboid;
+                        $payment['sparse'] = true;
+                        $synctoken = $qbo->synctoken($row["qboid"], $token, "Payment");
+
+                        if ($synctoken) {
+                            $payment["SyncToken"] = $synctoken['synctoken'];
+                        } else {
+                            throw new \Exception("SyncToken missing for QBO update");
+                        }
+                    }
+
+                    $result = $action->Payment($payment);
+
+                    if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
+                        $updateData["status"] = 4;
+                        $updateData["qboid"] = $isUpdate ? $qboid : 0;
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "failed",
+                            "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+                        ];
+                        $hasErrors = true;
+                    } else {
+                        $updateData["status"] = $qboid == 0 ? 1 : 2;
+                        $updateData["qboid"] = isset($result["data"]["Payment"]["Id"]) ? $result["data"]["Payment"]["Id"] : ($qboid ?: null);
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "success",
+                            "qboid" => $updateData["qboid"]
+                        ];
+                    }
+
+                    $invoiceService->update_pay_inpatient($updateData, "wgcentralsupply");
+                } catch (Exception $e) {
+                    $updateData["status"] = 4;
+                    $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
+                    $invoiceService->update_pay_inpatient($updateData, "wgcentralsupply");
+
+                    $results[] = [
+                        "tranid" => $row["tranid"],
+                        "status" => "failed",
+                        "error" => $e->getMessage()
+                    ];
+                    $hasErrors = true;
+                }
+            }
+
+            return $response([
+                "status" => $hasErrors ? 400 : 200,
+                "results" => $results
+            ], $hasErrors ? 400 : 200);
+        } catch (Exception $e) {
+            return $response([
+                "status" => 400,
+                "error" => $e->getMessage()
+            ], 400);
+        }
+    }
+    public function book_walkin($request, $response) {}
+    public function unbook_payments($request, $response, $params)
+    {
+        $invoiceService = new InvoicesService($this->db);
+
+        try {
+            $input = $request->validate([
+                "data"               => "required|array|min:1",
+                "token"              => "required",
+                "database"           => "required",
+                'data.*.tranid'      => 'required|int|min:1',
+                'data.*.qboid'       => 'required',
+            ]);
+
+            $inventory = $input["data"];
+            $token = $input["token"];
+            $db = $input['database'] === "wgfinance" ? "wgfinance" : "wgcentralsupply";
+            $results = [];
+            $hasErrors = false;
+
+            foreach ($inventory as $row) {
+                try {
+                    $qbo = new QboEntityService($this->db, $this->companyId);
+                    $synctoken = $qbo->synctoken($row["qboid"], $token, "Payment");
+                    $deleteResult = QBO::delete()->Payment($row["qboid"], $synctoken['synctoken']);
+
+                    $updateData = [
+                        "tranid" => $row["tranid"],
+                        "amount" => 0,
+                        "qboid"  => 0,
+                        "status" => 5
+                    ];
+
+                    // Check deleteResult for error handling (assume structure similar to QBO response)
+                    if (
+                        !is_array($deleteResult) ||
+                        !isset($deleteResult['status']) ||
+                        ($deleteResult['status'] !== 200 && $deleteResult['status'] !== 201)
+                    ) {
+                        $hasErrors = true;
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "failed",
+                            "error" => isset($deleteResult['data']) ? $deleteResult['data'] : "Failed to delete in QBO"
+                        ];
+                    } else {
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "success"
+                        ];
+                    }
+
+                    if ($db === "wgfinance") {
+                        $invoiceService->update_pay_walkin($updateData, $db);
+                    } else {
+                        $invoiceService->update_pay_inpatient($updateData, $db);
+                    }
+                } catch (\Exception $ex) {
+                    $hasErrors = true;
+                    $results[] = [
+                        "tranid" => $row["tranid"],
+                        "status" => "failed",
+                        "error" => $ex->getMessage()
+                    ];
+                }
+            }
+
+            return $response([
+                "status" => $hasErrors ? 400 : 200,
+                "results" => $results
+            ], $hasErrors ? 400 : 200);
+        } catch (Exception $e) {
+            return $response([
+                "status" => 400,
+                "error" => $e->getMessage()
+            ], 400);
         }
     }
 }

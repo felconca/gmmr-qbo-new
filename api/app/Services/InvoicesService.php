@@ -42,6 +42,62 @@ class InvoicesService
             ->update("possales", $update)
             ->WHERE(["TranRID" => $tranid]);
     }
+    public function update_pay_inpatient(array $data, $db)
+    {
+        $tranid    = $data["tranid"];
+        $amount    = $data["amount"];
+        $status    = $data["status"];
+        $qboid = isset($data["qboid"]) ? $data["qboid"] : null;
+        $timestamp = date("Y-m-d H:i:s");
+
+        $update = [
+            "sent_to_qbo_amt"  => $amount,
+            "sent_to_qbo"      => $status,
+            "sent_to_qbo_date" => $timestamp,
+            // payment
+            "sent_to_qbo_pay_amt"  => $amount,
+            "sent_to_qbo_pay"      => $status,
+            "sent_to_qbo_pay_date" => $timestamp,
+        ];
+
+        if (array_key_exists("qboid", $data)) {
+            $update["sent_to_qbo_id"] = $qboid;
+            $update["sent_to_qbo_pay_id"] = $qboid;
+        }
+        if ($status == 2 || $status == 5) {
+            $update["sent_to_qbo_update_amt"] = $amount;
+            $update["sent_to_qbo_pay_update_amt"] = $amount;
+        }
+
+        return  $this->conn->$db()
+            ->update("possales", $update)
+            ->WHERE(["TranRID" => $tranid]);
+    }
+    public function update_pay_walkin(array $data, $db)
+    {
+        $tranid    = $data["tranid"];
+        $amount    = $data["amount"];
+        $status    = $data["status"];
+        $qboid = isset($data["qboid"]) ? $data["qboid"] : null;
+        $timestamp = date("Y-m-d H:i:s");
+
+        $update = [
+            "sent_to_qbo_pay_amt"  => $amount,
+            "sent_to_qbo_pay"      => $status,
+            "sent_to_qbo_pay_date" => $timestamp,
+        ];
+
+        if (array_key_exists("qboid", $data)) {
+            $update["sent_to_qbo_pay_id"] = $qboid;
+        }
+        if ($status == 2 || $status == 5) {
+            $update["sent_to_qbo_pay_update_amt"] = $amount;
+        }
+
+        return  $this->conn->$db()
+            ->update("possales", $update)
+            ->WHERE(["TranRID" => $tranid]);
+    }
     public function update_inventory(array $data, $db)
     {
         $tranid    = $data["tranid"];

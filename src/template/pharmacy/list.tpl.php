@@ -17,6 +17,10 @@
                  <button class="btn btn-danger text-white" ng-click="handleUnBookedItems(selectedItems)" ng-disabled="selectedItems.length <= 0 || isSending">
                      <i class="ph-bold ph-trash text-white me-1"></i>Unbooked
                  </button>
+                 <hr class="vr" ng-if="selectedItems.length > 0 && filtered.status == 9">
+                 <button class="btn btn-theme-dark text-white" ng-click="linkInvoiceToPayment(selectedItems)" ng-disabled="isSending" ng-if="selectedItems.length > 0 && filtered.status == 9">
+                     <i class="ph-bold ph-link-simple me-1"></i>Link To Payment
+                 </button>
              </div>
          </div>
      </div>
@@ -116,7 +120,7 @@
                  <td nowrap class="text-center">
                      <span class="status {{ sentStatusClass(items.sent_status) }}">{{ sentStatus(items.sent_status) }}</span>
                  </td>
-                 <td class="text-center">{{items.pay_id > 0 ? 'Linked' : 'Not Linked'}}</td>
+                 <td class="text-center">{{items.link}}</td>
                  <td nowrap>{{items.sent_date?toISO(items.sent_date):'—' | date:'MMM dd, yyyy hh:mm a'}}</td>
                  <td nowrap class="text-end">{{items.netamount | number:2}}</td>
                  <td nowrap class="text-end">{{items.booked_amt | number:2}}</td>
@@ -133,7 +137,7 @@
                                  </button>
                              </li>
                              <li>
-                                 <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="linkInvoiceToPayment(items.sent_id)"
+                                 <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="linkInvoiceToPayment([items])"
                                      ng-if="items.sent_id > 0 && items.tstatus == 9"
                                      ng-disabled="items.pay_id > 0">
                                      <i class="ph-bold ph-link-simple me-2"></i>Link Payment
