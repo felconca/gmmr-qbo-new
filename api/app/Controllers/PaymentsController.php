@@ -100,6 +100,7 @@ class PaymentsController extends Rest
                 ->WHERE(["p.TranStatus" => 9])
                 ->WHERE(["py.cancelled" => 0])
                 ->WHERE("p.NetAmountDue != 0")
+                ->WHERE("py.AmountDue != 0")
                 ->WHERE_IN("p.sent_to_qbo", [1, 2])
                 ->WHERE_NOT_IN("p.PxRID", [1993, 1999, 14336])
                 ->WHERE_BETWEEN("p.TranDate", $start_dt, $end_dt);
