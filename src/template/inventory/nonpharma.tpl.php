@@ -53,6 +53,7 @@
                     <option ng-value="6">Laboratory</option>
                     <option ng-value="16">General Sales</option>
                     <option ng-value="21">PT Charges</option>
+                    <option ng-value="26">Medical Records</option>
                 </select>
             </div>
             <div class="filter-input" style="width: 150px;">
@@ -179,5 +180,7 @@
             searched.length > 0 ? formatNumber(Math.min(currentPage * itemsPerPage, searched.length)) : 0
         }} of {{formatNumber(searched.length)}} entries
     </span>
-    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages" items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(invoicesList)"></ul>
+    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages"
+        items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true"
+        ng-change="changePage(nonpharmaList)"></ul>
 </div>

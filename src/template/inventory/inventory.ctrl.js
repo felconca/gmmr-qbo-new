@@ -88,7 +88,7 @@ angular
             docnumber: "gmmr." + i.tranid,
             txndate: i.trandate,
             qbostatus: i.sent_status,
-            qboid: i.sent_id,
+            qboid: i.cost_id,
             customerref: i.pxid > 0 ? i.qbopx : 530,
             pxid: i.pxid > 0 ? i.pxid : "0",
             fname: i.fname,

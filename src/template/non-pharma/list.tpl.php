@@ -53,6 +53,7 @@
                      <option ng-value="6">Laboratory</option>
                      <option ng-value="16">General Sales</option>
                      <option ng-value="21">PT Charges</option>
+                     <option ng-value="26">Medical Records</option>
                  </select>
              </div>
              <div class="filter-input" style="width: 150px;">
