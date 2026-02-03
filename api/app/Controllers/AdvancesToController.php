@@ -251,7 +251,7 @@ class AdvancesToController extends Rest
                     }
 
 
-                    $line = $this->line_credit($row["tranid"], $customer, $creditto);
+                    $line = $this->line_employee($row["tranid"], $customer, $creditto);
 
                     $credit = [
                         "DocNumber" => $row["docnumber"],
@@ -328,7 +328,7 @@ class AdvancesToController extends Rest
         }
     }
 
-    private function line_credit($id, $customer = 0, $creditto = 0)
+    private function line_employee($id, $customer = 0, $creditto = 0)
     {
 
         $invoiceService = new InvoicesService($this->db);
@@ -351,7 +351,8 @@ class AdvancesToController extends Rest
                 "DetailType" => "JournalEntryLineDetail",
                 "JournalEntryLineDetail" => [
                     "PostingType" => "Debit",
-                    "AccountRef" => ["value" => $debitAccountRef],
+                    "AccountRef" => ["value" => 107],
+                    "Entity" => ["Type" => "Customer", "EntityRef" => ["value" => $creditto]]
                 ],
                 "Amount" => $amount,
             ];
@@ -360,7 +361,8 @@ class AdvancesToController extends Rest
                 "DetailType" => "JournalEntryLineDetail",
                 "JournalEntryLineDetail" => [
                     "PostingType" => "Credit",
-                    "AccountRef" => ["value" => $creditAccountRef],
+                    "AccountRef" => ["value" => 101],
+                    "Entity" => ["Type" => "Customer", "EntityRef" => ["value" => $customer]]
                 ],
                 "Amount" => $amount,
             ];
