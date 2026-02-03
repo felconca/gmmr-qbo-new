@@ -10,7 +10,7 @@
             </div>
             <hr class="vr">
             <div class="d-flex align-items-center" style="gap:6px">
-                <button class="btn btn-theme-dark" ng-click="handleBookItems(selectedItems, 7, 'wgcentralsupply')" ng-disabled="selectedItems.length <= 0 || isSending">
+                <button class="btn btn-theme-dark" ng-click="handleBookReturnItems(selectedItems, 7, 'wgcentralsupply')" ng-disabled="selectedItems.length <= 0 || isSending">
                     <i class="ph-bold ph-share-fat me-1"></i>
                     Book/Re-Book
                 </button>
@@ -34,7 +34,7 @@
         <div class="d-flex align-items-end justify-content-end" style="gap: 6px;">
             <div class="filter-input" style="width: 145px;">
                 <span>Status</span>
-                <select class="input-form" ng-model="nfiltered.isBooked" ng-disabled="isFiltering || isSending">
+                <select class="input-form" ng-model="rnfiltered.isBooked" ng-disabled="isFiltering || isSending">
                     <option ng-value="-1">All Status</option>
                     <option ng-value="0">Not Booked</option>
                     <option ng-value="1">Booked</option>
@@ -43,27 +43,15 @@
                     <option ng-value="5">Unbooked</option>
                 </select>
             </div>
-            <div class="filter-input" style="width: 260px;">
-                <span>GMMR Status</span>
-                <select class="input-form" ng-model="nfiltered.status" ng-disabled="isFiltering || isSending">
-                    <option ng-value="0">All GMMR Status</option>
-                    <option ng-value="1">Radiology Sales</option>
-                    <option ng-value="4">Med-OPD</option>
-                    <option ng-value="5">Med-InPatient</option>
-                    <option ng-value="6">Laboratory</option>
-                    <option ng-value="16">General Sales</option>
-                    <option ng-value="21">PT Charges</option>
-                </select>
-            </div>
             <div class="filter-input" style="width: 150px;">
                 <span>Date From:</span>
-                <input type="date" class="input-form" ng-model="nfiltered.startDate" date-input ng-disabled="isFiltering || isSending">
+                <input type="date" class="input-form" ng-model="rnfiltered.startDate" date-input ng-disabled="isFiltering || isSending">
             </div>
             <div class="filter-input" style="width: 150px;">
                 <span>Date To:</span>
-                <input type="date" class="input-form" ng-model="nfiltered.endDate" date-input ng-disabled="isFiltering || isSending">
+                <input type="date" class="input-form" ng-model="rnfiltered.endDate" date-input ng-disabled="isFiltering || isSending">
             </div>
-            <button class="btn btn-theme-dark" ng-click="handleFilter(nfiltered, 'nonpharma')"
+            <button class="btn btn-theme-dark" ng-click="handleReturnFilter(rnfiltered, 'nonpharma')"
                 ng-disabled="isFiltering || isSending">
                 <img ng-if="isFiltering" style="width:20px; height:20px" src="src/assets/img/loader_24x.svg" alt="">
                 <span ng-if="!isFiltering" class="text-white">GO</span>
@@ -85,7 +73,6 @@
                 <th width="1%" nowrap>Ref. No.</th>
                 <th nowrap>Patients</th>
                 <th width="10%">Created By</th>
-                <th width="10%">GMMR Status</th>
                 <th class="text-center" width="10%">Status</th>
                 <th class="text-start" width="10%" nowrap>Last Booked</th>
                 <th class="text-end" width="5%" nowrap>Amount</th>
@@ -114,7 +101,6 @@
                     </div>
                 </td>
                 <td nowrap>{{items.ufname.substring(0, 1)}}. {{items.ulname}}</td>
-                <td nowrap>{{items.transtatus}}</td>
                 <td nowrap class="text-center">
                     <span class="status {{ sentStatusClass(items.sent_status) }}">{{ sentStatus(items.sent_status) }}</span>
                 </td>
@@ -129,7 +115,7 @@
                         </button>
                         <ul class="dropdown-menu btn-action">
                             <li>
-                                <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="handleBookItems([items], 8, 'wgcentralsupply')">
+                                <button class="dropdown-item py-2 d-flex align-items-center" type="button" ng-click="handleBookReturnItems([items], 8, 'wgcentralsupply')">
                                     <i class="ph-bold ph-share-fat me-2"></i>Book/Re-Book
                                 </button>
                             </li>
@@ -161,7 +147,7 @@
         </tbody>
         <tfoot class="position-sticky bottom-0" ng-hide="isFiltering || isSending">
             <tr>
-                <td colspan="8" class="fw-bold">Total</td>
+                <td colspan="7" class="fw-bold">Total</td>
                 <td class="fw-bold text-end">{{getTotal(searched, 'netamount') | number:2}}</td>
                 <td class="fw-bold text-end">{{getTotal(searched, 'booked_amt') | number:2}}</td>
                 <td class="fw-bold text-end">{{getTotal(searched, 'updated_amt') | number:2}}</td>
@@ -179,5 +165,6 @@
             searched.length > 0 ? formatNumber(Math.min(currentPage * itemsPerPage, searched.length)) : 0
         }} of {{formatNumber(searched.length)}} entries
     </span>
-    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages" items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(invoicesList)"></ul>
+    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages" items-per-page="itemsPerPage"
+        ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(nonpharmaReturnList)"></ul>
 </div>

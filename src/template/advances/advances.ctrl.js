@@ -32,9 +32,9 @@ angular
             isSending: false,
             accessToken: AuthService.token("accesstoken"),
             filtered: EFILTER(EM_FILTER),
-            // affiltered: EFILTER(AF_FILTER),
-            // asfiltered: EFILTER(AS_FILTER),
-            // cfiltered: EFILTER(C_FILTER),
+            affiltered: EFILTER(AF_FILTER),
+            asfiltered: EFILTER(AS_FILTER),
+            cfiltered: EFILTER(C_FILTER),
             Math: window.Math,
             creditMemoId: 0,
         })
@@ -58,7 +58,7 @@ angular
                     vm.isFiltering = false;
                 });
         }
-        vm.handleAdvancesEmployee(vm.filtered)
+
         vm.handleFilter = (filtered, to) => {
             if (to == 'employee') {
                 localStorage.setItem("employee-filter", JSON.stringify(filtered))
@@ -92,6 +92,7 @@ angular
                         qbostatus: i.sent_status,
                         qboid: i.sent_id,
                         customerref: i.qbopx,
+                        creditto: i.employee_ref,
                         fname: i.fname,
                         mname: i.mname,
                         lname: i.lname,
@@ -100,35 +101,35 @@ angular
                         memo: `${i.transtatus} - ${i.cmid}\nPatient: ${i.pxid > 0 ? i.completepx : "Walk-In Patient"
                             }\nCreated By: ${i.ufname} ${i.ulname}`,
                     }));
-                    // console.log(credit);
-                    $http
-                        .post("api/advances/book_credit", { token: token, data: credit })
-                        .then((res) => {
-                            Toasty.showToast(
-                                "Success",
-                                `Credit memo(s) booked successfully`,
-                                `<i class="ph-fill ph-check-circle"></i>`,
-                                5000
-                            );
-                        })
-                        .catch((err) => {
-                            const success = err.data.results.filter((r) => r.status === "success").length;
-                            const failed = err.data.results.filter((r) => r.status === "failed").length;
-                            Toasty.showToast(
-                                `Attention`,
-                                `${success} of ${items.length} credit memos were booked.
-                          ${failed} credit memo(s) failed to process`,
-                                `<i class="ph-fill ph-warning text-warning"></i>`,
-                                5000
-                            );
-                            console.error(`failed:${failed}`, `success:${success}`);
-                        })
-                        .finally(() => {
-                            vm.isSending = false;
-                            vm.selectAll = false;
-                            vm.selectedItems = [];
-                            vm.handleCreditMemoList(vm.filtered);
-                        });
+                    console.log(credit);
+                    // $http
+                    //     .post("api/advances/book_credit", { token: token, data: credit })
+                    //     .then((res) => {
+                    //         Toasty.showToast(
+                    //             "Success",
+                    //             `Credit memo(s) booked successfully`,
+                    //             `<i class="ph-fill ph-check-circle"></i>`,
+                    //             5000
+                    //         );
+                    //     })
+                    //     .catch((err) => {
+                    //         const success = err.data.results.filter((r) => r.status === "success").length;
+                    //         const failed = err.data.results.filter((r) => r.status === "failed").length;
+                    //         Toasty.showToast(
+                    //             `Attention`,
+                    //             `${success} of ${items.length} credit memos were booked.
+                    //       ${failed} credit memo(s) failed to process`,
+                    //             `<i class="ph-fill ph-warning text-warning"></i>`,
+                    //             5000
+                    //         );
+                    //         console.error(`failed:${failed}`, `success:${success}`);
+                    //     })
+                    //     .finally(() => {
+                    //         vm.isSending = false;
+                    //         vm.selectAll = false;
+                    //         vm.selectedItems = [];
+                    //         vm.handleCreditMemoList(vm.filtered);
+                    //     });
                 } else {
                     vm.isSending = false;
                     vm.selectAll = false;
@@ -296,4 +297,8 @@ angular
          * <span class="status {{ vm.sentStatusClass(items.sent_status) }}">{{ vm.sentStatus(items.sent_status) }}</span>
          */
         vm.sentStatusClass = (status) => vm.statusLabelMap[status]?.class || "";
+
+        if (vs.current.name === 'app.employee') {
+            vm.handleAdvancesEmployee(vm.filtered)
+        }
     })

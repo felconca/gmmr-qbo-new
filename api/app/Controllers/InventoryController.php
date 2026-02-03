@@ -456,6 +456,7 @@ class InventoryController extends Rest
         $line = array_merge($debit, $credit);
         return $line;
     }
+
     // returns
     public function pharmacy_returns($request, $response)
     {
@@ -464,12 +465,10 @@ class InventoryController extends Rest
                 "start_dt" => "required|date",
                 "end_dt" => "required|date",
                 "isbooked" => "required|numeric:min:1",
-                "status" => "required|numeric:min:1",
             ]);
             $start_dt = $input['start_dt'];
             $end_dt = $input['end_dt'];
             $isbooked = $input["isbooked"];
-            $status = $input["status"];
 
             $invoices = $this->db->wgfinance()
                 ->SELECT([
@@ -519,13 +518,8 @@ class InventoryController extends Rest
                 ->WHERE("(p.pinnedby >= 0 OR p.bookedbycashier > 0)")
                 ->WHERE("pd.UnitCost > 0")
                 ->WHERE_NOT_IN("p.PxRID", [1993, 1999, 14336])
-                ->WHERE_BETWEEN("p.TranDate", $start_dt, $end_dt);
-
-            if ($status > 0) {
-                $invoices->WHERE(["p.TranStatus" => $status]);
-            } else {
-                $invoices->WHERE_IN("p.TranStatus", [11, 15]);
-            }
+                ->WHERE_BETWEEN("p.TranDate", $start_dt, $end_dt)
+                ->WHERE_IN("p.TranStatus", [11, 15]);
 
             if ($isbooked != -1) {
                 $invoices->WHERE(["p.sent_to_cost_qbo" => $isbooked]);
@@ -545,12 +539,10 @@ class InventoryController extends Rest
                 "start_dt" => "required|date",
                 "end_dt" => "required|date",
                 "isbooked" => "required|numeric:min:1",
-                "status" => "required|numeric:min:1",
             ]);
             $start_dt = $input['start_dt'];
             $end_dt = $input['end_dt'];
             $isbooked = $input["isbooked"];
-            $status = 15;
 
             $invoices = $this->db->wgcentralsupply()
                 ->SELECT([
@@ -601,7 +593,7 @@ class InventoryController extends Rest
                 ->WHERE("pd.UnitCost > 0")
                 ->WHERE_NOT_IN("p.PxRID", [1993, 1999, 14336])
                 ->WHERE_BETWEEN("p.TranDate", $start_dt, $end_dt)
-                ->WHERE(["p.TranStatus" => $status]);
+                ->WHERE_IN("p.TranStatus", [11, 15]);
 
 
             if ($isbooked != -1) {
@@ -614,5 +606,199 @@ class InventoryController extends Rest
         } catch (Exception $e) {
             return $response(["status" => 400, "error" => $e->getMessage()], 400);
         }
+    }
+    public function book_returns($request, $response)
+    {
+        try {
+            $qboService = new QboCustomerService($this->db, $this->companyId);
+            $invoiceService = new InvoicesService($this->db);
+
+            $input = $request->validate([
+                "data"             => "required|array|min:1",
+                "token"            => "required",
+                "database"         => "required",
+                'data.*.tranid'    => 'required|int|min:1',
+                'data.*.docnumber' => 'required|string',
+                'data.*.txndate'   => 'required|date',
+                'data.*.amount'    => 'required|float',
+                'data.*.customerref' => 'numeric',
+                'data.*.qbostatus'   => 'numeric',
+                'data.*.qboid'       => 'numeric',
+                'data.*.note'        => 'string',
+            ]);
+
+            $inventory = $input["data"];
+            $token = $input["token"];
+            $db = $input['database'] === "wgfinance" ? "wgfinance" : "wgcentralsupply";
+            $hasErrors = false;
+            $results = [];
+
+
+            foreach ($inventory as $row) {
+                QBO::setAuth($this->companyId, $token);
+                $updateData = [
+                    "tranid" => $row["tranid"],
+                    "amount" => $row["amount"],
+                    "qboid"  => 0,
+                ];
+
+                try {
+                    $qbo = new QboEntityService($this->db, $this->companyId);
+                    $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
+                    $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
+
+                    $isUpdate = $qboid > 0; // if already sent or modified make isUpdate true
+                    $action = $isUpdate ? QBO::update() : QBO::create(); // isUpdate true use update else use create
+
+                    $line = $this->line_returns($row["tranid"], $input['database']);
+
+                    if (isset($row['pxid']) && $row['pxid'] == 0) {
+                        $customer = 530;
+                    } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
+                        $customer = $row['customerref'];
+                    } else {
+                        $customer = $qboService->createCustomer([
+                            "token"  => $token,
+                            "pxid"   => $row["pxid"],
+                            "fname"  => $row["fname"],
+                            "lname"  => $row["lname"],
+                            "mname"  => isset($row["mname"]) ? $row["mname"] : null,
+                            "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
+                        ]);
+                    }
+
+
+                    $inventory = [
+                        "DocNumber" => $row["docnumber"],
+                        "TxnDate" => $row["txndate"],
+                        "Line" => $line,
+                        "PrivateNote" => $row["note"],
+                    ];
+                    // return $response($inventory, 200);
+                    if ($isUpdate) {
+                        // FIX: set 'Id' to QBO Invoice id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
+                        $inventory['Id'] = $qboid; // NOT $qbo (service), should be the QBO invoice id
+                        $inventory['sparse'] = true;
+                        $synctoken = $qbo->synctoken($row["qboid"], $token, "JournalEntry");
+
+                        if ($synctoken) {
+                            $inventory["SyncToken"] = $synctoken['synctoken'];
+                        } else {
+                            // Protect, must have SyncToken for update
+                            throw new \Exception("SyncToken missing for QBO update");
+                        }
+                    }
+
+                    $result = $action->JournalEntry($inventory);
+
+                    if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
+                        // Mark as failed
+                        $updateData["status"] = 4;
+                        $updateData["qboid"] = $isUpdate ? $qboid : 0;
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "failed",
+                            "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+                        ];
+                        $hasErrors = true;
+                    } else {
+                        // Mark as success
+                        $updateData["status"] = $qboid == 0 ? 1 : 2;
+                        $updateData["qboid"] = isset($result["data"]["JournalEntry"]["Id"]) ? $result["data"]["JournalEntry"]["Id"] : ($qboid ?: null);
+                        $results[] = [
+                            "tranid" => $row["tranid"],
+                            "status" => "success",
+                            "qboid" => $updateData["qboid"]
+                        ];
+                    }
+
+                    // Always update DB
+                    $invoiceService->update_inventory($updateData,  $db);
+                } catch (Exception $e) {
+                    // Catch QBO errors / customer creation errors
+                    $updateData["status"] = 4;
+                    $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
+                    $invoiceService->update_inventory($updateData, $db);
+
+                    $results[] = [
+                        "tranid" => $row["tranid"],
+                        "status" => "failed",
+                        "error" => $e->getMessage()
+                    ];
+                    $hasErrors = true;
+                }
+            }
+
+            return $response([
+                "status" => $hasErrors ? 400 : 200,
+                "results" => $results
+            ], $hasErrors ? 400 : 200);
+        } catch (Exception $e) {
+            return $response([
+                "status" => 400,
+                "error" => $e->getMessage()
+            ], 400);
+        }
+    }
+    public function line_returns($id, $db)
+    {
+        // This implementation has issues:
+        // 1. The variables $debit and $credit are not initialized as arrays, and only store the last $list item.
+        // 2. The foreach loop processes $list, but then OUTSIDE the loop only the last $list is used.
+        // 3. The spread operator (`...`) only works for arrays (PHP 7.4+), and here $debit and $credit are arrays with only one element, and only for the last $list.
+
+        // A corrected, minimal rewrite would be:
+
+        $invoiceService = new InvoicesService($this->db);
+        $details = $db == 'wgfinance' ? $invoiceService->pharmacy_line($id) : $invoiceService->nonpharma_line($id);
+
+        $qbo = new QboEntityService($this->db, $this->companyId);
+
+        $credit = [];
+        $debit = [];
+
+        foreach ($details as $list) {
+            // Ensure $list is an array, not an object (stdClass)
+            if (is_object($list)) {
+                $list = (array)$list;
+            }
+
+            // Skip items where cost is not set or cost is zero
+            if (!isset($list["cost"]) || floatval($list["cost"]) == 0) {
+                continue;
+            }
+
+            // Prepare AccountRef values depending on $db
+            if ($db != 'wgfinance') {
+                $debitAccountRef = $qbo->radio_inventory(isset($list["codes"]) ? $list["codes"] : 0, isset($list["invid"]) ? $list["invid"] : 0);
+                $creditAccountRef = $qbo->radio_cost(isset($list["codes"]) ? $list["codes"] : 0, isset($list["costid"]) ? $list["costid"] : 0);
+            } else {
+                $debitAccountRef = isset($list["invid"]) ? $list["invid"] : 0;
+                $creditAccountRef = isset($list["costid"]) ? $list["costid"] : 0;
+            }
+
+            $amount = abs((isset($list["cost"]) ? $list["cost"] : 0) * (isset($list["qty"]) ? $list["qty"] : 0));
+            $debit[] = [
+                "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+                "DetailType" => "JournalEntryLineDetail",
+                "JournalEntryLineDetail" => [
+                    "PostingType" => "Debit",
+                    "AccountRef" => ["value" => $debitAccountRef],
+                ],
+                "Amount" => $amount,
+            ];
+            $credit[] = [
+                "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+                "DetailType" => "JournalEntryLineDetail",
+                "JournalEntryLineDetail" => [
+                    "PostingType" => "Credit",
+                    "AccountRef" => ["value" => $creditAccountRef],
+                ],
+                "Amount" => $amount,
+            ];
+        }
+
+        $line = array_merge($debit, $credit);
+        return $line;
     }
 }

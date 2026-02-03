@@ -67,7 +67,10 @@ Route::group(['prefix' => 'inventory', 'middleware' => [new AuthSession("user")]
     // gmmr functions
     Route::get('pharmacy', 'InventoryController@pharmacy');
     Route::get('nonpharma', 'InventoryController@nonpharma');
+    Route::get('pharmacy_returns', 'InventoryController@pharmacy_returns');
+    Route::get('nonpharma_returns', 'InventoryController@nonpharma_returns');
     Route::post('book_inventory', 'InventoryController@book_inventory');
+    Route::post('book_returns', 'InventoryController@book_returns');
     Route::post('delete_inventory', 'InventoryController@delete_inventory');
     // for quickbooks functions
 

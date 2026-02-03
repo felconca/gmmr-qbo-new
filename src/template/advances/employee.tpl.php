@@ -48,12 +48,12 @@
                     class="input-form"
                     ng-model="filtered.isBooked"
                     ng-disabled="isFiltering || isSending">
-                    <option value="-1">All Status</option>
-                    <option value="0">Not Booked</option>
-                    <option value="1">Booked</option>
-                    <option value="2">Modified</option>
-                    <option value="4">Failed</option>
-                    <option value="5">Unbooked</option>
+                    <option ng-value="-1">All Status</option>
+                    <option ng-value="0">Not Booked</option>
+                    <option ng-value="1">Booked</option>
+                    <option ng-value="2">Modified</option>
+                    <option ng-value="4">Failed</option>
+                    <option ng-value="5">Unbooked</option>
                 </select>
             </div>
             <div class="filter-input" style="width: 150px;">

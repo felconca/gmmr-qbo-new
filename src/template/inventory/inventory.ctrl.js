@@ -8,6 +8,10 @@ angular
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const INVENTORY_FILTER = JSON.parse(localStorage.getItem("pharma-inventory"));
     const INVENTORY_NFILTER = JSON.parse(localStorage.getItem("nonpharma-inventory"));
+
+    const INVENTORY_RFILTER = JSON.parse(localStorage.getItem("pharma-returns-inventory"));
+    const INVENTORY_RNFILTER = JSON.parse(localStorage.getItem("nonpharma-returns-inventory"));
+
     const FILTER = (FILTERED) => ({
       startDate: FILTERED && FILTERED.startDate ? FILTERED.startDate : thirtyDaysAgo,
       endDate: FILTERED && FILTERED.endDate ? FILTERED.endDate : new Date(),
@@ -18,6 +22,17 @@ angular
       startDate: FILTERED && FILTERED.startDate ? FILTERED.startDate : thirtyDaysAgo,
       endDate: FILTERED && FILTERED.endDate ? FILTERED.endDate : new Date(),
       status: FILTERED && typeof FILTERED.status !== "undefined" ? FILTERED.status : 0,
+      isBooked: FILTERED && typeof FILTERED.isBooked !== "undefined" ? FILTERED.isBooked : -1, // if the variable is 0  it return invalid so better check or undefined type
+    });
+
+    const RFILTER = (FILTERED) => ({
+      startDate: FILTERED && FILTERED.startDate ? FILTERED.startDate : thirtyDaysAgo,
+      endDate: FILTERED && FILTERED.endDate ? FILTERED.endDate : new Date(),
+      isBooked: FILTERED && typeof FILTERED.isBooked !== "undefined" ? FILTERED.isBooked : -1, // if the variable is 0  it return invalid so better check or undefined type
+    });
+    const RNFILTER = (FILTERED) => ({
+      startDate: FILTERED && FILTERED.startDate ? FILTERED.startDate : thirtyDaysAgo,
+      endDate: FILTERED && FILTERED.endDate ? FILTERED.endDate : new Date(),
       isBooked: FILTERED && typeof FILTERED.isBooked !== "undefined" ? FILTERED.isBooked : -1, // if the variable is 0  it return invalid so better check or undefined type
     });
     Object.assign(vm, {
@@ -34,6 +49,8 @@ angular
       isSending: false,
       filtered: FILTER(INVENTORY_FILTER),
       nfiltered: NFILTER(INVENTORY_NFILTER),
+      rfiltered: RFILTER(INVENTORY_RFILTER),
+      rnfiltered: RNFILTER(INVENTORY_RNFILTER),
       Math: window.Math,
       invoiceId: 0,
     });
@@ -58,7 +75,7 @@ angular
           vm.isFiltering = false;
         });
     };
-    vm.getPharmacy(vm.filtered);
+
     vm.getNonPharma = (filter) => {
       vm.isFiltering = true;
       let start_dt = $filter("date")(filter.startDate, "yyyy-MM-dd"),
@@ -79,7 +96,52 @@ angular
           vm.isFiltering = false;
         });
     };
-    vm.getNonPharma(vm.nfiltered);
+
+
+    // returns
+    vm.getPharmacyReturns = (filter) => {
+      vm.isFiltering = true;
+      let start_dt = $filter("date")(filter.startDate, "yyyy-MM-dd"),
+        end_dt = $filter("date")(filter.endDate, "yyyy-MM-dd");
+
+      $http
+        .get(
+          `api/inventory/pharmacy_returns?start_dt=${start_dt}&end_dt=${end_dt}&isbooked=${filter.isBooked}`
+        )
+        .then((res) => {
+          vm.pharmacyReturnList = res.data;
+        })
+        .catch((err) => {
+          console.error(err);
+        })
+        .finally(() => {
+          vm.isLoadingData = false;
+          vm.isFiltering = false;
+        });
+    };
+
+    vm.getNonPharmaReturns = (filter) => {
+      vm.isFiltering = true;
+      let start_dt = $filter("date")(filter.startDate, "yyyy-MM-dd"),
+        end_dt = $filter("date")(filter.endDate, "yyyy-MM-dd");
+
+      $http
+        .get(
+          `api/inventory/nonpharma_returns?start_dt=${start_dt}&end_dt=${end_dt}&isbooked=${filter.isBooked}`
+        )
+        .then((res) => {
+          vm.nonpharmaReturnList = res.data;
+        })
+        .catch((err) => {
+          console.error(err);
+        })
+        .finally(() => {
+          vm.isLoadingData = false;
+          vm.isFiltering = false;
+        });
+    };
+
+
     vm.handleBookItems = async (items, st, db) => {
       if (items.length > 0) {
         let token = await AuthService.token("accesstoken");
@@ -87,7 +149,7 @@ angular
           vm.isSending = true;
           let inventory = items.map((i) => ({
             tranid: i.tranid,
-            docnumber: "gmmr." + i.tranid,
+            docnumber: "gmmr.n." + i.tranid,
             txndate: i.trandate,
             qbostatus: i.sent_status,
             qboid: i.cost_id,
@@ -98,7 +160,7 @@ angular
             lname: i.lname,
             suffix: i.suffix,
             amount: i.netcost,
-            note: `${i.transtatus} SI - ${i.tranid}\nPatient: ${i.pxid > 0 ? i.completepx : "Walk-In Patient"
+            note: `INVENTORY SI - ${i.tranid}\nPatient: ${i.pxid > 0 ? i.completepx : "Walk-In Patient"
               }\nCreated By: ${i.ufname} ${i.ulname}`,
           }));
           //   console.log({ data: inventory, token: token, database: db });
@@ -170,12 +232,19 @@ angular
               vm.selectAll = false;
               vm.selectedItems = [];
               vm.getPharmacy(vm.filtered);
+              vm.getNonPharma(vm.nfiltered);
+              vm.getPharmacyReturns(vm.rfiltered);
+              vm.getNonPharmaReturns(vm.rnfiltered);
             });
         } else {
           vm.isSending = false;
           vm.selectAll = false;
           vm.selectedItems = [];
           vm.getPharmacy(vm.filtered);
+          vm.getNonPharma(vm.nfiltered);
+          vm.getPharmacyReturns(vm.rfiltered);
+          vm.getNonPharmaReturns(vm.rnfiltered);
+
           Toasty.showToast(
             "Token Error",
             `Cannot book inventory(s), token not found`,
@@ -185,6 +254,61 @@ angular
         }
       }
     };
+    vm.handleBookReturnItems = async (items, st, db) => {
+      if (items.length > 0) {
+        let token = await AuthService.token("accesstoken");
+        if (token) {
+          vm.isSending = true;
+          let inventory = items.map((i) => ({
+            tranid: i.tranid,
+            docnumber: "gmmr.n." + i.cmid,
+            txndate: i.trandate,
+            qbostatus: i.sent_status,
+            qboid: i.cost_id,
+            customerref: i.pxid > 0 ? i.qbopx : 530,
+            pxid: i.pxid > 0 ? i.pxid : "0",
+            fname: i.fname,
+            mname: i.mname,
+            lname: i.lname,
+            suffix: i.suffix,
+            amount: i.netcost,
+            note: `INVENTORY CM - ${i.cmid}\nPatient: ${i.pxid > 0 ? i.completepx : "Walk-In Patient"
+              }\nCreated By: ${i.ufname} ${i.ulname}`,
+          }));
+          //   console.log({ data: inventory, token: token, database: db });
+          $http
+            .post("api/inventory/book_returns", { data: inventory, token: token, database: db })
+            .then((res) => {
+              Toasty.showToast(
+                "Success",
+                `Inventory booked successfully`,
+                `<i class="ph-fill ph-check-circle"></i>`,
+                5000
+              );
+              vm.getPharmacyReturns(vm.rfiltered);
+              vm.getNonPharmaReturns(vm.rnfiltered);
+            })
+            .catch((err) => {
+              const success = err.data.results.filter((r) => r.status === "success").length;
+              const failed = err.data.results.filter((r) => r.status === "failed").length;
+              Toasty.showToast(
+                `Attention`,
+                `${success} of ${items.length} inventory were booked.
+                  ${failed} inventory failed to processed`,
+                `<i class="ph-fill ph-warning text-warning"></i>`,
+                5000
+              );
+              console.error(`failed:${failed}`, `success:${success}`);
+            })
+            .finally(() => {
+              vm.isSending = false;
+              vm.selectAll = false;
+              vm.selectedItems = [];
+            });
+        }
+      }
+    };
+
     vm.handleFilter = (filtered, type) => {
       // console.log(filtered);
       if (type === "pharma") {
@@ -197,6 +321,20 @@ angular
         localStorage.setItem("nonpharma-inventory", JSON.stringify(filtered));
       }
     };
+    vm.handleReturnFilter = (filtered, type) => {
+      // console.log(filtered);
+      if (type === "pharma") {
+        vm.pharmacyReturnList = [];
+        vm.getPharmacyReturns(filtered);
+        localStorage.setItem("pharma-returns-inventory", JSON.stringify(filtered));
+      } else {
+        vm.nonpharmaReturnList = [];
+        vm.getNonPharmaReturns(filtered);
+        localStorage.setItem("nonpharma-returns-inventory", JSON.stringify(filtered));
+      }
+    };
+
+
     vm.handleSelectAllItems = (list) => {
       vm.selectAll = !vm.selectAll;
       const startIndex = (vm.currentPage - 1) * vm.itemsPerPage;
@@ -255,4 +393,14 @@ angular
      * <span class="status {{ vm.sentStatusClass(items.sent_status) }}">{{ vm.sentStatus(items.sent_status) }}</span>
      */
     vm.sentStatusClass = (status) => vm.statusLabelMap[status]?.class || "";
+
+    if (vs.current.name == 'app.pharmacy-inventory') {
+      vm.getPharmacy(vm.filtered);
+    } else if (vs.current.name == 'app.nonpharma-inventory') {
+      vm.getNonPharma(vm.nfiltered);
+    } else if (vs.current.name == 'app.pharmacy-return-inventory') {
+      vm.getPharmacyReturns(vm.rfiltered);
+    } else if (vs.current.name == 'app.nonpharma-return-inventory') {
+      vm.getNonPharmaReturns(vm.rnfiltered);
+    }
   });

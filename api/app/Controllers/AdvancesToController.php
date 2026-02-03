@@ -78,6 +78,7 @@ class AdvancesToController extends Rest
                     "ux.LastName AS ulname",
                     "cm.CMRID AS cmid",
                     "CONCAT(cxto.FirstName, ' ', IFNULL(SUBSTRING(cxto.MiddleName,1,1),''), ' ', cxto.LastName, ' ', IFNULL(cxto.namesuffix, '')) AS employee",
+                    "cxto.qbo_px_id AS employee_ref",
 
                     "ltf.TranStatusDescription AS transtatus"
                 ], "possales_details pd")
@@ -173,15 +174,16 @@ class AdvancesToController extends Rest
             $invoiceService = new InvoicesService($this->db);
 
             $input = $request->validate([
-                "data"             => "required|array|min:1",
-                "token"            => "required",
-                'data.*.tranid'    => 'required|int|min:1',
-                'data.*.pxid'      => 'required|int|min:1',
-                'data.*.docnumber' => 'required|string',
-                'data.*.txndate'   => 'required|date',
-                'data.*.amount'    => 'required|float',
-                'data.*.gtaxcalc'  => 'required|string',
+                "data"               => "required|array|min:1",
+                "token"              => "required",
+                'data.*.tranid'      => 'required|int|min:1',
+                'data.*.pxid'        => 'required|int|min:1',
+                'data.*.docnumber'   => 'required|string',
+                'data.*.txndate'     => 'required|date',
+                'data.*.amount'      => 'required|float',
+                'data.*.gtaxcalc'    => 'required|string',
                 'data.*.customerref' => 'numeric',
+                'data.*.creditto'    => 'numeric',
                 'data.*.fname'       => 'required|string',
                 'data.*.lname'       => 'required|string',
                 'data.*.qbostatus'   => 'numeric',
@@ -213,7 +215,6 @@ class AdvancesToController extends Rest
                     $isUpdate = $qboid > 0;
                     $action = $isUpdate ? QBO::update() : QBO::create();
 
-                    $line = $this->line_credit($row["tranid"]);
 
                     if (isset($row['pxid']) && $row['pxid'] == 0) {
                         $customer = 530;
@@ -230,38 +231,40 @@ class AdvancesToController extends Rest
                         ]);
                     }
 
+                    // change to use employee using creditto
+                    if (isset($row['creditto']) && $row['creditto'] > 0) {
+                        $creditto = $row['creditto'];
+                    } else {
+                        // fallback to customerref if provided, else try to create customer
+                        if (isset($row['customerref']) && $row['customerref'] > 0) {
+                            $creditto = $row['customerref'];
+                        } else {
+                            $creditto = $qboService->createCustomer([
+                                "token"  => $token,
+                                "pxid"   => $row["pxid"],
+                                "fname"  => $row["fname"],
+                                "lname"  => $row["lname"],
+                                "mname"  => isset($row["mname"]) ? $row["mname"] : null,
+                                "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
+                            ]);
+                        }
+                    }
+
+
+                    $line = $this->line_credit($row["tranid"], $customer, $creditto);
+
                     $credit = [
                         "DocNumber" => $row["docnumber"],
                         "TxnDate" => $row["txndate"],
-                        "TotalAmt" => $row["amount"],
                         "Line" => $line,
-                        "CustomerRef" => ["value" => $customer],
-                        "GlobalTaxCalculation" => $row["gtaxcalc"],
-                        "CustomerMemo" => ["value" => isset($row['memo']) ? $row['memo'] : ''],
-                        "CustomField" => [
-                            [
-                                "DefinitionId" => "1",
-                                "Name" => "Patient ID",
-                                "Type" => "StringType",
-                                "StringValue" => $row["pxid"]
-                            ],
-                            [
-                                "DefinitionId" => "2",
-                                "Name" => "GMMR Status",
-                                "Type" => "StringType",
-                                "StringValue" => $row["gstatus"]
-                            ]
-                        ],
-                        "domain" => "QBO",
-                        "PrintStatus" => "NeedToPrint",
-                        "CurrencyRef" => ["value" => "PHP", "name" => "Philippine Peso"],
+                        "PrivateNote" => $row["note"],
                     ];
 
                     if ($isUpdate) {
                         // FIX: set 'Id' to QBO credit id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
                         $credit['Id'] = $qboid; // NOT $qbo (service), should be the QBO credit id
                         $credit['sparse'] = true;
-                        $synctoken = $qbo->synctoken($row["qboid"], $token, "CreditMemo");
+                        $synctoken = $qbo->synctoken($row["qboid"], $token, "JournalEntry");
 
                         if ($synctoken) {
                             $credit["SyncToken"] = $synctoken['synctoken'];
@@ -271,7 +274,7 @@ class AdvancesToController extends Rest
                         }
                     }
 
-                    $result = $action->CreditMemo($credit);
+                    $result = $action->JournalEntry($credit);
 
                     if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
                         // Mark as failed
@@ -286,7 +289,7 @@ class AdvancesToController extends Rest
                     } else {
                         // Mark as success
                         $updateData["status"] = $qboid == 0 ? 1 : 2;
-                        $updateData["qboid"] = isset($result["data"]["CreditMemo"]["Id"]) ? $result["data"]["CreditMemo"]["Id"] : ($qboid ?: null);
+                        $updateData["qboid"] = isset($result["data"]["JournalEntry"]["Id"]) ? $result["data"]["JournalEntry"]["Id"] : ($qboid ?: null);
                         $results[] = [
                             "tranid" => $row["tranid"],
                             "status" => "success",
@@ -324,164 +327,207 @@ class AdvancesToController extends Rest
             ], 400);
         }
     }
-    public function book_employee_debit($request)
+
+    private function line_credit($id, $customer = 0, $creditto = 0)
     {
-        try {
-            $qboService = new QboCustomerService($this->db, $this->companyId);
-            $invoiceService = new InvoicesService($this->db);
 
-            $input = $request->validate([
-                "data"             => "required|array|min:1",
-                "token"            => "required",
-                'data.*.tranid'    => 'required|int|min:1',
-                'data.*.pxid'      => 'required|int|min:1',
-                'data.*.docnumber' => 'required|string',
-                'data.*.txndate'   => 'required|date',
-                'data.*.amount'    => 'required|float',
-                'data.*.gtaxcalc'  => 'required|string',
-                'data.*.customerref' => 'numeric',
-                'data.*.fname'       => 'required|string',
-                'data.*.lname'       => 'required|string',
-                'data.*.qbostatus'   => 'numeric',
-                'data.*.qboid'       => 'numeric',
-                'data.*.memo'        => 'string',
-                'data.*.gstatus'     => 'string',
-                'data.*.mname'       => 'string',
-                'data.*.suffix'      => 'string',
-            ]);
+        $invoiceService = new InvoicesService($this->db);
+        $details = $invoiceService->credit_line($id);
 
-            $invoices = $input["data"];
-            $token = $input["token"];
-            $hasErrors = false;
-            $results = [];
+        $qbo = new QboEntityService($this->db, $this->companyId);
 
-            foreach ($invoices as $row) {
-                QBO::setAuth($this->companyId, $token);
-                $updateData = [
-                    "tranid" => $row["tranid"],
-                    "amount" => $row["amount"],
-                    "qboid"  => 0,
-                ];
+        $credit = [];
+        $debit = [];
 
-                try {
-                    $qbo = new QboEntityService($this->db, $this->companyId);
-                    $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
-                    $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
-
-                    $isUpdate = $qboid > 0;
-                    $action = $isUpdate ? QBO::update() : QBO::create();
-
-                    $line = $this->line_invoice($row["tranid"]);
-
-                    if (isset($row['pxid']) && $row['pxid'] == 0) {
-                        $customer = 530;
-                    } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
-                        $customer = $row['customerref'];
-                    } else {
-                        $customer = $qboService->createCustomer([
-                            "token"  => $token,
-                            "pxid"   => $row["pxid"],
-                            "fname"  => $row["fname"],
-                            "lname"  => $row["lname"],
-                            "mname"  => isset($row["mname"]) ? $row["mname"] : null,
-                            "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
-                        ]);
-                    }
-
-                    $invoice = [
-                        "DocNumber" => $row["docnumber"],
-                        "TxnDate" => $row["txndate"],
-                        "TotalAmt" => $row["amount"],
-                        "Line" => $line,
-                        "CustomerRef" => ["value" => $customer],
-                        "GlobalTaxCalculation" => $row["gtaxcalc"],
-                        "CustomerMemo" => ["value" => isset($row['memo']) ? $row['memo'] : ''],
-                        "CustomField" => [
-                            [
-                                "DefinitionId" => "1",
-                                "Name" => "Patient ID",
-                                "Type" => "StringType",
-                                "StringValue" => $row["pxid"]
-                            ],
-                            [
-                                "DefinitionId" => "2",
-                                "Name" => "GMMR Status",
-                                "Type" => "StringType",
-                                "StringValue" => $row["gstatus"]
-                            ]
-                        ],
-                        "domain" => "QBO",
-                        "PrintStatus" => "NeedToPrint",
-                        "CurrencyRef" => ["value" => "PHP", "name" => "Philippine Peso"],
-                    ];
-
-                    if ($isUpdate) {
-                        // FIX: set 'Id' to QBO Invoice id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
-                        $invoice['Id'] = $qboid; // NOT $qbo (service), should be the QBO invoice id
-                        $invoice['sparse'] = true;
-                        $synctoken = $qbo->synctoken($row["qboid"], $token, "Invoice");
-
-                        if ($synctoken) {
-                            $invoice["SyncToken"] = $synctoken['synctoken'];
-                        } else {
-                            // Protect, must have SyncToken for update
-                            throw new \Exception("SyncToken missing for QBO update");
-                        }
-                    }
-
-                    $result = $action->Invoice($invoice);
-
-                    if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
-                        // Mark as failed
-                        $updateData["status"] = 4;
-                        $updateData["qboid"] = $isUpdate ? $qboid : 0;
-                        $results[] = [
-                            "tranid" => $row["tranid"],
-                            "status" => "failed",
-                            "error" => isset($result['data']) ? $result['data'] : "Unknown error"
-                        ];
-                        $hasErrors = true;
-                    } else {
-                        // Mark as success
-                        $updateData["status"] = $qboid == 0 ? 1 : 2;
-                        $updateData["qboid"] = isset($result["data"]["Invoice"]["Id"]) ? $result["data"]["Invoice"]["Id"] : ($qboid ?: null);
-                        $results[] = [
-                            "tranid" => $row["tranid"],
-                            "status" => "success",
-                            "qboid" => $updateData["qboid"]
-                        ];
-                    }
-
-                    //Always update DB
-                    $invoiceService->update($updateData, "wgcentralsupply");
-                    //return $response($invoice, 200);
-                } catch (Exception $e) {
-                    // Catch QBO errors / customer creation errors
-                    $updateData["status"] = 4;
-                    $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
-                    $invoiceService->update($updateData, "wgcentralsupply");
-
-                    $results[] = [
-                        "tranid" => $row["tranid"],
-                        "status" => "failed",
-                        "error" => $e->getMessage()
-                    ];
-                    $hasErrors = true;
-                }
+        foreach ($details as $list) {
+            // Ensure $list is an array, not an object (stdClass)
+            if (is_object($list)) {
+                $list = (array)$list;
             }
 
-            // Return overall result
-            return $response([
-                "status" => $hasErrors ? 400 : 200,
-                "results" => $results
-            ], $hasErrors ? 400 : 200);
-        } catch (Exception $e) {
-            return $response([
-                "status" => 400,
-                "error" => $e->getMessage()
-            ], 400);
+            $amount = abs((isset($list["cost"]) ? $list["cost"] : 0) * (isset($list["qty"]) ? $list["qty"] : 0));
+            $debit[] = [
+                "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+                "DetailType" => "JournalEntryLineDetail",
+                "JournalEntryLineDetail" => [
+                    "PostingType" => "Debit",
+                    "AccountRef" => ["value" => $debitAccountRef],
+                ],
+                "Amount" => $amount,
+            ];
+            $credit[] = [
+                "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+                "DetailType" => "JournalEntryLineDetail",
+                "JournalEntryLineDetail" => [
+                    "PostingType" => "Credit",
+                    "AccountRef" => ["value" => $creditAccountRef],
+                ],
+                "Amount" => $amount,
+            ];
         }
+
+        $line = array_merge($debit, $credit);
+        return $line;
     }
+
+    // public function book_employee_debit($request, $response)
+    // {
+    //     try {
+    //         $qboService = new QboCustomerService($this->db, $this->companyId);
+    //         $invoiceService = new InvoicesService($this->db);
+
+    //         $input = $request->validate([
+    //             "data"             => "required|array|min:1",
+    //             "token"            => "required",
+    //             'data.*.tranid'    => 'required|int|min:1',
+    //             'data.*.pxid'      => 'required|int|min:1',
+    //             'data.*.docnumber' => 'required|string',
+    //             'data.*.txndate'   => 'required|date',
+    //             'data.*.amount'    => 'required|float',
+    //             'data.*.gtaxcalc'  => 'required|string',
+    //             'data.*.customerref' => 'numeric',
+    //             'data.*.fname'       => 'required|string',
+    //             'data.*.lname'       => 'required|string',
+    //             'data.*.qbostatus'   => 'numeric',
+    //             'data.*.qboid'       => 'numeric',
+    //             'data.*.memo'        => 'string',
+    //             'data.*.gstatus'     => 'string',
+    //             'data.*.mname'       => 'string',
+    //             'data.*.suffix'      => 'string',
+    //         ]);
+
+    //         $invoices = $input["data"];
+    //         $token = $input["token"];
+    //         $hasErrors = false;
+    //         $results = [];
+
+    //         foreach ($invoices as $row) {
+    //             QBO::setAuth($this->companyId, $token);
+    //             $updateData = [
+    //                 "tranid" => $row["tranid"],
+    //                 "amount" => $row["amount"],
+    //                 "qboid"  => 0,
+    //             ];
+
+    //             try {
+    //                 $qbo = new QboEntityService($this->db, $this->companyId);
+    //                 $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
+    //                 $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
+
+    //                 $isUpdate = $qboid > 0;
+    //                 $action = $isUpdate ? QBO::update() : QBO::create();
+
+    //                 $line = $this->line_invoice($row["tranid"]);
+
+    //                 if (isset($row['pxid']) && $row['pxid'] == 0) {
+    //                     $customer = 530;
+    //                 } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
+    //                     $customer = $row['customerref'];
+    //                 } else {
+    //                     $customer = $qboService->createCustomer([
+    //                         "token"  => $token,
+    //                         "pxid"   => $row["pxid"],
+    //                         "fname"  => $row["fname"],
+    //                         "lname"  => $row["lname"],
+    //                         "mname"  => isset($row["mname"]) ? $row["mname"] : null,
+    //                         "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
+    //                     ]);
+    //                 }
+
+    //                 $invoice = [
+    //                     "DocNumber" => $row["docnumber"],
+    //                     "TxnDate" => $row["txndate"],
+    //                     "TotalAmt" => $row["amount"],
+    //                     "Line" => $line,
+    //                     "CustomerRef" => ["value" => $customer],
+    //                     "GlobalTaxCalculation" => $row["gtaxcalc"],
+    //                     "CustomerMemo" => ["value" => isset($row['memo']) ? $row['memo'] : ''],
+    //                     "CustomField" => [
+    //                         [
+    //                             "DefinitionId" => "1",
+    //                             "Name" => "Patient ID",
+    //                             "Type" => "StringType",
+    //                             "StringValue" => $row["pxid"]
+    //                         ],
+    //                         [
+    //                             "DefinitionId" => "2",
+    //                             "Name" => "GMMR Status",
+    //                             "Type" => "StringType",
+    //                             "StringValue" => $row["gstatus"]
+    //                         ]
+    //                     ],
+    //                     "domain" => "QBO",
+    //                     "PrintStatus" => "NeedToPrint",
+    //                     "CurrencyRef" => ["value" => "PHP", "name" => "Philippine Peso"],
+    //                 ];
+
+    //                 if ($isUpdate) {
+    //                     // FIX: set 'Id' to QBO Invoice id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
+    //                     $invoice['Id'] = $qboid; // NOT $qbo (service), should be the QBO invoice id
+    //                     $invoice['sparse'] = true;
+    //                     $synctoken = $qbo->synctoken($row["qboid"], $token, "Invoice");
+
+    //                     if ($synctoken) {
+    //                         $invoice["SyncToken"] = $synctoken['synctoken'];
+    //                     } else {
+    //                         // Protect, must have SyncToken for update
+    //                         throw new \Exception("SyncToken missing for QBO update");
+    //                     }
+    //                 }
+
+    //                 $result = $action->Invoice($invoice);
+
+    //                 if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
+    //                     // Mark as failed
+    //                     $updateData["status"] = 4;
+    //                     $updateData["qboid"] = $isUpdate ? $qboid : 0;
+    //                     $results[] = [
+    //                         "tranid" => $row["tranid"],
+    //                         "status" => "failed",
+    //                         "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+    //                     ];
+    //                     $hasErrors = true;
+    //                 } else {
+    //                     // Mark as success
+    //                     $updateData["status"] = $qboid == 0 ? 1 : 2;
+    //                     $updateData["qboid"] = isset($result["data"]["Invoice"]["Id"]) ? $result["data"]["Invoice"]["Id"] : ($qboid ?: null);
+    //                     $results[] = [
+    //                         "tranid" => $row["tranid"],
+    //                         "status" => "success",
+    //                         "qboid" => $updateData["qboid"]
+    //                     ];
+    //                 }
+
+    //                 //Always update DB
+    //                 $invoiceService->update($updateData, "wgcentralsupply");
+    //                 //return $response($invoice, 200);
+    //             } catch (Exception $e) {
+    //                 // Catch QBO errors / customer creation errors
+    //                 $updateData["status"] = 4;
+    //                 $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
+    //                 $invoiceService->update($updateData, "wgcentralsupply");
+
+    //                 $results[] = [
+    //                     "tranid" => $row["tranid"],
+    //                     "status" => "failed",
+    //                     "error" => $e->getMessage()
+    //                 ];
+    //                 $hasErrors = true;
+    //             }
+    //         }
+
+    //         // Return overall result
+    //         return $response([
+    //             "status" => $hasErrors ? 400 : 200,
+    //             "results" => $results
+    //         ], $hasErrors ? 400 : 200);
+    //     } catch (Exception $e) {
+    //         return $response([
+    //             "status" => 400,
+    //             "error" => $e->getMessage()
+    //         ], 400);
+    //     }
+    // }
 
     public function debit_employee($refno) {}
 }
