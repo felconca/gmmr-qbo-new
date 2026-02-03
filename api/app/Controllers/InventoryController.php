@@ -199,18 +199,13 @@ class InventoryController extends Rest
                 "token"            => "required",
                 "database"         => "required",
                 'data.*.tranid'    => 'required|int|min:1',
-                'data.*.pxid'      => 'required|int|min:1',
                 'data.*.docnumber' => 'required|string',
                 'data.*.txndate'   => 'required|date',
                 'data.*.amount'    => 'required|float',
                 'data.*.customerref' => 'numeric',
-                'data.*.fname'       => 'required|string',
-                'data.*.lname'       => 'required|string',
                 'data.*.qbostatus'   => 'numeric',
                 'data.*.qboid'       => 'numeric',
                 'data.*.note'        => 'string',
-                'data.*.mname'       => 'string',
-                'data.*.suffix'      => 'string',
             ]);
 
             $inventory = $input["data"];
@@ -233,7 +228,7 @@ class InventoryController extends Rest
                     $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
                     $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
 
-                    $isUpdate = $qboid > 0 && ($qbostatus == 1 || $qbostatus == 2); // if already sent or modified make isUpdate true
+                    $isUpdate = $qboid > 0; // if already sent or modified make isUpdate true
                     $action = $isUpdate ? QBO::update() : QBO::create(); // isUpdate true use update else use create
 
                     $line = $this->line_inventory($row["tranid"], $input['database']);
@@ -399,6 +394,7 @@ class InventoryController extends Rest
             ], 400);
         }
     }
+
     public function line_inventory($id, $db)
     {
         // This implementation has issues:
@@ -427,23 +423,33 @@ class InventoryController extends Rest
                 continue;
             }
 
+            // Prepare AccountRef values depending on $db
+            if ($db != 'wgfinance') {
+                $creditAccountRef = $qbo->radio_inventory(isset($list["codes"]) ? $list["codes"] : 0, isset($list["invid"]) ? $list["invid"] : 0);
+                $debitAccountRef = $qbo->radio_cost(isset($list["codes"]) ? $list["codes"] : 0, isset($list["costid"]) ? $list["costid"] : 0);
+            } else {
+                $creditAccountRef = isset($list["invid"]) ? $list["invid"] : 0;
+                $debitAccountRef = isset($list["costid"]) ? $list["costid"] : 0;
+            }
+
+            $amount = abs((isset($list["cost"]) ? $list["cost"] : 0) * (isset($list["qty"]) ? $list["qty"] : 0));
             $credit[] = [
                 "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
                 "DetailType" => "JournalEntryLineDetail",
                 "JournalEntryLineDetail" => [
                     "PostingType" => "Credit",
-                    "AccountRef" => ["value" => $qbo->radio_inventory(isset($list["codes"]) ? $list["codes"] : 0, isset($list["invid"]) ? $list["invid"] : 0)],
+                    "AccountRef" => ["value" => $creditAccountRef],
                 ],
-                "Amount" => (isset($list["cost"]) ? $list["cost"] : 0) * (isset($list["qty"]) ? $list["qty"] : 0),
+                "Amount" => $amount,
             ];
             $debit[] = [
                 "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
                 "DetailType" => "JournalEntryLineDetail",
                 "JournalEntryLineDetail" => [
                     "PostingType" => "Debit",
-                    "AccountRef" => ["value" => $qbo->radio_cost(isset($list["codes"]) ? $list["codes"] : 0, isset($list["costid"]) ? $list["costid"] : 0)],
+                    "AccountRef" => ["value" => $debitAccountRef],
                 ],
-                "Amount" => (isset($list["cost"]) ? $list["cost"] : 0) * (isset($list["qty"]) ? $list["qty"] : 0),
+                "Amount" => $amount,
             ];
         }
 
