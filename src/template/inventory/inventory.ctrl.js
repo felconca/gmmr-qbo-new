@@ -23,6 +23,8 @@ angular
     Object.assign(vm, {
       pharmacyList: [],
       nonpharmaList: [],
+      pharmacyReturnList: [],
+      nonpharmaReturnList: [],
       selectedItems: [],
       currentPage: 1,
       itemsPerPage: 50,

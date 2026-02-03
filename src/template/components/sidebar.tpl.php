@@ -46,6 +46,8 @@
         <ul>
             <li ui-sref-active="active"><a ui-sref="app.nonpharma-inventory" ui-sref-opts="{reload: true}"><i class="ph-fill ph-package"></i><span>NonPharma Inventory</span></a></li>
             <li ui-sref-active="active"><a ui-sref="app.pharmacy-inventory" ui-sref-opts="{reload: true}"><i class="ph-fill ph-package"></i><span>Pharamcy Inventory</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.nonpharma-return-inventory" ui-sref-opts="{reload: true}"><i class="ph-fill ph-package"></i><span>NonPharma Return</span></a></li>
+            <li ui-sref-active="active"><a ui-sref="app.pharmacy-return-inventory" ui-sref-opts="{reload: true}"><i class="ph-fill ph-package"></i><span>Pharamcy Return</span></a></li>
         </ul>
 
         <div class="text-light small my-2 px-2">
