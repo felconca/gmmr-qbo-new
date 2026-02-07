@@ -139,6 +139,9 @@ Route::group(['prefix' => 'quickbooks', 'middleware' => [new AuthSession("user")
     Route::post('items/add', 'QBOServiceController@items_add');
     Route::post('items/update', 'QBOServiceController@items_update');
     Route::post('items/delete', 'QBOServiceController@items_delete');
+
+    // Accounts
+    Route::get('accounts/list', 'QBOServiceController@chart_of_accounts');
 });
 
 

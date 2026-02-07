@@ -191,4 +191,47 @@ class QBOServiceController extends Rest
             ], 500);
         }
     }
+    public function chart_of_accounts($request, $response)
+    {
+        try {
+            $input = $request->validate([
+                "token" => "required",
+            ]);
+
+            $token = $input["token"];
+            $active = isset($input["active"]) ? $input["active"] : false;
+            $sub = isset($input["sub"]) && $input["sub"] == '' ? "" : "AND SubAccount = {$input['sub']}";
+
+            QBO::setAuth($this->companyId, $token);
+
+            $countResult = QBO::query("SELECT COUNT(*) FROM Account WHERE Active = $active $sub");
+            $totalCount = isset($countResult['data']['QueryResponse']['totalCount'])
+                ? (int) $countResult['data']['QueryResponse']['totalCount']
+                : 0;
+            $limit = ($totalCount >= 1000) ? 1000 : $totalCount;
+
+            $accounts = QBO::all()->Account(
+                "WHERE Active = $active $sub ORDERBY Name ASC STARTPOSITION 1 MAXRESULTS $limit"
+            );
+
+            $accountItems = [];
+            if (
+                isset($accounts['data']['QueryResponse']['Account']) &&
+                is_array($accounts['data']['QueryResponse']['Account'])
+            ) {
+                $accountItems = $accounts['data']['QueryResponse']['Account'];
+            }
+
+            return $response([
+                'status' => 200,
+                'items' => $accountItems,
+                'count' =>  $totalCount
+            ], 200);
+        } catch (\Exception $e) {
+            return $response([
+                'status' => 500,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

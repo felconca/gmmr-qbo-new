@@ -92,5 +92,5 @@
             searched.length > 0 ? formatNumber(Math.min(currentPage * itemsPerPage, searched.length)) : 0
         }} of {{formatNumber(searched.length)}} entries
     </span>
-    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages" items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(invoicesList)"></ul>
+    <ul style="margin-bottom: 0 !important;" uib-pagination total-items="searched.length" num-pages="numPages" items-per-page="itemsPerPage" ng-model="currentPage" max-size="5" boundary-link-numbers="true" ng-change="changePage(itemsList)"></ul>
 </div>

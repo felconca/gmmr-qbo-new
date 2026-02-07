@@ -296,6 +296,10 @@ angular
           url: "/items",
           templateUrl: "src/template/quickbooks/items.tpl.php",
           data: { breadcrumb: "Items", pageTitle: "GMMR-QBO | QuickBooks - Items" },
+        }).state("app.quickbooks.accounts", {
+          url: "/chart-of-accounts",
+          templateUrl: "src/template/quickbooks/accounts.tpl.php",
+          data: { breadcrumb: "Items", pageTitle: "GMMR-QBO | QuickBooks - Chart of Accounts" },
         });
 
       // set to url to html5
