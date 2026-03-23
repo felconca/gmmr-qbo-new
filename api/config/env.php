@@ -3,7 +3,7 @@ return array(
     'DB_HOST' => 'localhost',
     'DB_USER' => 'root',
     'DB_PASSWORD' => '',
-    'DB_CONNECTIONS' => 'ipadrbg,wgcentralsupply,wgfinance',
+    'DB_CONNECTIONS' => 'ipadrbg,wgcentralsupply,wgfinance,quickbooks_db',
     'DB_CHARSET' => 'utf8mb4',
     'DB_COLLATION' => 'utf8mb4_general_ci',
 

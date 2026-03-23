@@ -106,9 +106,12 @@ class QboEntityService
     {
         return 5; // sales account
     }
-    public function synctoken($id, $token, $entity)
+    public function synctoken($id, $token, $entity, $skipAuth = false)
     {
-        QBO::setAuth($this->companyId, $token);
+        if (!$skipAuth) {
+            QBO::setAuth($this->companyId, $token);
+        }
+
         $qb = QBO::get()->$entity($id);
 
         // Check for API call failure (status not 200 or 201)

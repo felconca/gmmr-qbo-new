@@ -2,10 +2,11 @@
 
 namespace App\Controllers;
 
+use App\Services\TokenStorageService;
 use Includes\Rest;
 use Core\Database\Database;
 use QuickBooksOnlineHelper\Facades\QBO;
-use Redis\RedisCache;
+// use Redis\RedisCache;
 
 class QBOServiceController extends Rest
 {
@@ -29,14 +30,6 @@ class QBOServiceController extends Rest
         $this->clientId = isset($_ENV["QBO_CLIENTID"]) ? $_ENV["QBO_CLIENTID"] : NULL;
         $this->secretId = isset($_ENV["QBO_SECRETID"]) ? $_ENV["QBO_SECRETID"] : NULL;
         $this->companyId = isset($_ENV["QBO_COMPANYID"]) ? $_ENV["QBO_COMPANYID"] : NULL;
-        $this->redis = new RedisCache([
-            'host'     => '127.0.0.1',
-            'port'     => 6379,
-            'password' => null,   // optional, leave null if no password
-            'database' => 0,      // optional, default DB
-            'timeout'  => 2,      // optional timeout in seconds
-            'json'     => true,   // optional: automatically serialize/deserialize arrays
-        ]);
     }
 
     public function index($request, $response, $params)
@@ -45,6 +38,8 @@ class QBOServiceController extends Rest
     }
     public function generate($request, $response, $params)
     {
+        $conn = $this->db->quickbooks_db();
+        $storage = new TokenStorageService($conn);
         try {
             $input = $request->validate(["token" => "required|string"]);
             $refreshToken = $input["token"];
@@ -89,14 +84,14 @@ class QBOServiceController extends Rest
                 "access_token" => $responseData['access_token']
             ]];
             // set access token
-            $this->redis->set(
+            $storage->set(
                 "accessToken",
                 $responseData["access_token"],
                 'EX',
                 $responseData["expires_in"]
             );
             // set refresh_token
-            $this->redis->set(
+            $storage->set(
                 "refreshToken",
                 $responseData["refresh_token"],
                 'EX',
@@ -110,11 +105,13 @@ class QBOServiceController extends Rest
     }
     public function token($request, $response, $params)
     {
+        $conn = $this->db->quickbooks_db();
+        $storage = new TokenStorageService($conn);
         try {
             // If Redis is not connected or throws a connection exception
             try {
-                $accessToken = $this->redis->get('accessToken');
-                $refreshToken = $this->redis->get('refreshToken');
+                $accessToken =  $storage->get('accessToken');
+                $refreshToken =  $storage->get('refreshToken');
             } catch (\RedisException $e) {
                 return $response([
                     "status" => 503,

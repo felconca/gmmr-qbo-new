@@ -161,21 +161,206 @@ class ProfessionalFeeController extends Rest
     }
 
     // qbo functions
+    // public function book_invoice($request, $response, $params)
+    // {
+    //     try {
+    //         $customers = new QboCustomerService($this->db, $this->companyId);
+    //         $invoiceService = new InvoicesService($this->db);
+
+    //         $input = $request->validate([
+    //             "data"             => "required|array|min:1",
+    //             "token"            => "required",
+    //             'data.*.tranid'    => 'required|int|min:1',
+    //             'data.*.pxid'      => 'required|int|min:1',
+    //             'data.*.docnumber' => 'required|string',
+    //             'data.*.txndate'   => 'required|date',
+    //             'data.*.amount'    => 'required|float',
+    //             'data.*.gtaxcalc'  => 'required|string',
+    //             'data.*.customerref' => 'numeric',
+    //             'data.*.fname'       => 'required|string',
+    //             'data.*.lname'       => 'required|string',
+    //             'data.*.qbostatus'   => 'numeric',
+    //             'data.*.qboid'       => 'numeric',
+    //             'data.*.memo'        => 'string',
+    //             'data.*.gstatus'     => 'string',
+    //             'data.*.mname'       => 'string',
+    //             'data.*.suffix'      => 'string',
+    //         ]);
+
+    //         $invoices = $input["data"];
+    //         $token = $input["token"];
+    //         $hasErrors = false;
+    //         $results = [];
+
+    //         // get only those pxid where customerref is equal to 0
+    //         $pxidMap = [];
+    //         foreach ($invoices as $invoice) {
+    //             $customerref = isset($invoice['customerref']) ? (int)$invoice['customerref'] : 0;
+    //             if ((int)$invoice['pxid'] > 0 && $customerref === 0) {
+    //                 $pxid = $invoice['pxid'];
+    //                 if (!isset($pxidMap[$pxid])) { // first occurrence wins
+    //                     $pxidMap[$pxid] = [
+    //                         "pxid"   => $pxid,
+    //                         "fname"  => $invoice["fname"],
+    //                         "lname"  => $invoice["lname"],
+    //                         "mname"  => isset($invoice["mname"]) ? $invoice["mname"] : null,
+    //                         "suffix" => isset($invoice["suffix"]) ? $invoice["suffix"] : null,
+    //                     ];
+    //                 }
+    //             }
+    //         }
+    //         $unresolvedPatients = array_values($pxidMap);
+    //         $resolvedCustomers  = $customers->create($unresolvedPatients, $token);
+
+    //         // authenticate qbo and manage service for booking
+    //         QBO::setAuth($this->companyId, $token);
+    //         $qbo = new QboEntityService($this->db, $this->companyId);
+
+    //         $tranids = array_column($invoices, 'tranid');
+    //         $allLines = $this->line_invoice($tranids);
+
+    //         foreach ($invoices as $row) {
+
+    //             $updateData = [
+    //                 "tranid" => $row["tranid"],
+    //                 "amount" => $row["amount"],
+    //                 "qboid"  => 0,
+    //             ];
+
+    //             try {
+    //                 // $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
+    //                 $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
+
+    //                 $pxid        = (int)$row['pxid'];
+    //                 $customerref = isset($row['customerref']) ? (int)$row['customerref'] : 0;
+
+    //                 $isUpdate = $qboid > 0;
+    //                 $action = $isUpdate ? QBO::update() : QBO::create();
+
+    //                 // $line = $this->line_invoice($row["tranid"]);
+    //                 $line = $allLines[$row['tranid']];
+
+
+    //                 if ($pxid === 0) {
+    //                     $customer = 530; // walk-in sentinel
+    //                 } elseif ($customerref > 0) {
+    //                     $customer = $customerref; // already resolved, passed from frontend
+    //                 } elseif (isset($resolvedCustomers[$pxid])) {
+    //                     $customer = $resolvedCustomers[$pxid]; // resolved via create()
+    //                 } else {
+    //                     // should never reach here if filtering was correct
+    //                     throw new Exception("Customer could not be resolved for pxid: " . $pxid);
+    //                 }
+
+    //                 $invoice = [
+    //                     "DocNumber" => $row["docnumber"],
+    //                     "TxnDate" => $row["txndate"],
+    //                     "TotalAmt" => $row["amount"],
+    //                     "Line" => $line,
+    //                     "CustomerRef" => ["value" => $customer],
+    //                     "GlobalTaxCalculation" => $row["gtaxcalc"],
+    //                     "CustomerMemo" => ["value" => isset($row['memo']) ? $row['memo'] : ''],
+    //                     "CustomField" => [
+    //                         [
+    //                             "DefinitionId" => "1",
+    //                             "Name" => "Patient ID",
+    //                             "Type" => "StringType",
+    //                             "StringValue" => $row["pxid"]
+    //                         ],
+    //                         [
+    //                             "DefinitionId" => "2",
+    //                             "Name" => "GMMR Status",
+    //                             "Type" => "StringType",
+    //                             "StringValue" => $row["gstatus"]
+    //                         ]
+    //                     ],
+    //                     "domain" => "QBO",
+    //                     "PrintStatus" => "NeedToPrint",
+    //                     "CurrencyRef" => ["value" => "PHP", "name" => "Philippine Peso"],
+    //                 ];
+
+    //                 if ($isUpdate) {
+    //                     // FIX: set 'Id' to QBO Invoice id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
+    //                     $invoice['Id'] = $qboid; // NOT $qbo (service), should be the QBO invoice id
+    //                     $invoice['sparse'] = true;
+    //                     $synctoken = $qbo->synctoken($row["qboid"], $token, "Invoice", true);
+
+    //                     if ($synctoken) {
+    //                         $invoice["SyncToken"] = $synctoken['synctoken'];
+    //                     } else {
+    //                         // Protect, must have SyncToken for update
+    //                         throw new \Exception("SyncToken missing for QBO update");
+    //                     }
+    //                 }
+
+    //                 $result = $action->Invoice($invoice);
+
+    //                 if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
+    //                     // Mark as failed
+    //                     $updateData["status"] = 4;
+    //                     $updateData["qboid"] = $isUpdate ? $qboid : 0;
+    //                     $results[] = [
+    //                         "tranid" => $row["tranid"],
+    //                         "status" => "failed",
+    //                         "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+    //                     ];
+    //                     $hasErrors = true;
+    //                 } else {
+    //                     // Mark as success
+    //                     $updateData["status"] = $qboid == 0 ? 1 : 2;
+    //                     $updateData["qboid"] = isset($result["data"]["Invoice"]["Id"]) ? $result["data"]["Invoice"]["Id"] : ($qboid ?: null);
+    //                     $results[] = [
+    //                         "tranid" => $row["tranid"],
+    //                         "status" => "success",
+    //                         "qboid" => $updateData["qboid"]
+    //                     ];
+    //                 }
+
+    //                 // Always update DB
+    //                 $invoiceService->update($updateData, "wgcentralsupply");
+    //             } catch (Exception $e) {
+    //                 // Catch QBO errors / customer creation errors
+    //                 $updateData["status"] = 4;
+    //                 $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
+    //                 $invoiceService->update($updateData, "wgcentralsupply");
+
+    //                 $results[] = [
+    //                     "tranid" => $row["tranid"],
+    //                     "status" => "failed",
+    //                     "error" => $e->getMessage()
+    //                 ];
+    //                 $hasErrors = true;
+    //             }
+    //         }
+
+    //         // Return overall result
+    //         return $response([
+    //             "status" => $hasErrors ? 400 : 200,
+    //             "results" => $results
+    //         ], $hasErrors ? 400 : 200);
+    //     } catch (Exception $e) {
+    //         return $response([
+    //             "status" => 400,
+    //             "error" => $e->getMessage()
+    //         ], 400);
+    //     }
+    // }
+
     public function book_invoice($request, $response, $params)
     {
         try {
-            $qboService = new QboCustomerService($this->db, $this->companyId);
+            $customers      = new QboCustomerService($this->db, $this->companyId);
             $invoiceService = new InvoicesService($this->db);
 
             $input = $request->validate([
-                "data"             => "required|array|min:1",
-                "token"            => "required",
-                'data.*.tranid'    => 'required|int|min:1',
-                'data.*.pxid'      => 'required|int|min:1',
-                'data.*.docnumber' => 'required|string',
-                'data.*.txndate'   => 'required|date',
-                'data.*.amount'    => 'required|float',
-                'data.*.gtaxcalc'  => 'required|string',
+                "data"               => "required|array|min:1",
+                "token"              => "required",
+                'data.*.tranid'      => 'required|int|min:1',
+                'data.*.pxid'        => 'required|int|min:1',
+                'data.*.docnumber'   => 'required|string',
+                'data.*.txndate'     => 'required|date',
+                'data.*.amount'      => 'required|float',
+                'data.*.gtaxcalc'    => 'required|string',
                 'data.*.customerref' => 'numeric',
                 'data.*.fname'       => 'required|string',
                 'data.*.lname'       => 'required|string',
@@ -187,134 +372,158 @@ class ProfessionalFeeController extends Rest
                 'data.*.suffix'      => 'string',
             ]);
 
-            $invoices = $input["data"];
-            $token = $input["token"];
+            $invoices  = $input["data"];
+            $token     = $input["token"];
             $hasErrors = false;
-            $results = [];
+            $results   = [];
+
+            // Phase 1: Resolve unresolved customers (customerref = 0) — one batch
+            $pxidMap = [];
+            foreach ($invoices as $invoice) {
+                $customerref = isset($invoice['customerref']) ? (int)$invoice['customerref'] : 0;
+                if ((int)$invoice['pxid'] > 0 && $customerref === 0) {
+                    $pxid = $invoice['pxid'];
+                    if (!isset($pxidMap[$pxid])) {
+                        $pxidMap[$pxid] = [
+                            "pxid"   => $pxid,
+                            "fname"  => $invoice["fname"],
+                            "lname"  => $invoice["lname"],
+                            "mname"  => isset($invoice["mname"]) ? $invoice["mname"] : null,
+                            "suffix" => isset($invoice["suffix"]) ? $invoice["suffix"] : null,
+                        ];
+                    }
+                }
+            }
+            $unresolvedPatients = array_values($pxidMap);
+            $resolvedCustomers  = !empty($unresolvedPatients)
+                ? $customers->create($unresolvedPatients, $token)
+                : [];
+
+            // Phase 2: Auth QBO once, batch fetch lines
+            QBO::setAuth($this->companyId, $token);
+            $qbo      = new QboEntityService($this->db, $this->companyId);
+            $tranids  = array_column($invoices, 'tranid');
+            $allLines = $this->line_invoice($tranids);
+
+            // Phase 3: Book all invoices — collect results, no DB writes yet
+            $pendingUpdates = [];
 
             foreach ($invoices as $row) {
-                QBO::setAuth($this->companyId, $token);
-                $updateData = [
-                    "tranid" => $row["tranid"],
-                    "amount" => $row["amount"],
-                    "qboid"  => 0,
-                ];
+                $qboid       = isset($row['qboid']) ? (int)$row['qboid'] : 0;
+                $pxid        = (int)$row['pxid'];
+                $customerref = isset($row['customerref']) ? (int)$row['customerref'] : 0;
+                $isUpdate    = $qboid > 0;
+                $action      = $isUpdate ? QBO::update() : QBO::create();
+                $line        = $allLines[$row['tranid']];
 
                 try {
-                    $qbo = new QboEntityService($this->db, $this->companyId);
-                    $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
-                    $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
-
-                    $isUpdate = $qboid > 0;
-                    $action = $isUpdate ? QBO::update() : QBO::create();
-
-                    $line = $this->line_invoice($row["tranid"]);
-
-                    if (isset($row['pxid']) && $row['pxid'] == 0) {
+                    if ($pxid === 0) {
                         $customer = 530;
-                    } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
-                        $customer = $row['customerref'];
+                    } elseif ($customerref > 0) {
+                        $customer = $customerref;
+                    } elseif (isset($resolvedCustomers[$pxid])) {
+                        $customer = $resolvedCustomers[$pxid];
                     } else {
-                        $customer = $qboService->createCustomer([
-                            "token"  => $token,
-                            "pxid"   => $row["pxid"],
-                            "fname"  => $row["fname"],
-                            "lname"  => $row["lname"],
-                            "mname"  => isset($row["mname"]) ? $row["mname"] : null,
-                            "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
-                        ]);
+                        throw new Exception("Customer could not be resolved for pxid: " . $pxid);
                     }
 
                     $invoice = [
-                        "DocNumber" => $row["docnumber"],
-                        "TxnDate" => $row["txndate"],
-                        "TotalAmt" => $row["amount"],
-                        "Line" => $line,
-                        "CustomerRef" => ["value" => $customer],
+                        "DocNumber"           => $row["docnumber"],
+                        "TxnDate"             => $row["txndate"],
+                        "TotalAmt"            => $row["amount"],
+                        "Line"                => $line,
+                        "CustomerRef"         => ["value" => $customer],
                         "GlobalTaxCalculation" => $row["gtaxcalc"],
-                        "CustomerMemo" => ["value" => isset($row['memo']) ? $row['memo'] : ''],
-                        "CustomField" => [
+                        "CustomerMemo"        => ["value" => isset($row['memo']) ? $row['memo'] : ''],
+                        "CustomField"         => [
                             [
                                 "DefinitionId" => "1",
-                                "Name" => "Patient ID",
-                                "Type" => "StringType",
-                                "StringValue" => $row["pxid"]
+                                "Name"         => "Patient ID",
+                                "Type"         => "StringType",
+                                "StringValue"  => $row["pxid"]
                             ],
                             [
                                 "DefinitionId" => "2",
-                                "Name" => "GMMR Status",
-                                "Type" => "StringType",
-                                "StringValue" => $row["gstatus"]
+                                "Name"         => "GMMR Status",
+                                "Type"         => "StringType",
+                                "StringValue"  => $row["gstatus"]
                             ]
                         ],
-                        "domain" => "QBO",
+                        "domain"      => "QBO",
                         "PrintStatus" => "NeedToPrint",
                         "CurrencyRef" => ["value" => "PHP", "name" => "Philippine Peso"],
                     ];
 
                     if ($isUpdate) {
-                        // FIX: set 'Id' to QBO Invoice id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
-                        $invoice['Id'] = $qboid; // NOT $qbo (service), should be the QBO invoice id
+                        $invoice['Id']     = $qboid;
                         $invoice['sparse'] = true;
-                        $synctoken = $qbo->synctoken($row["qboid"], $token, "Invoice");
+                        $synctoken         = $qbo->synctoken($row["qboid"], $token, "Invoice", true);
 
-                        if ($synctoken) {
-                            $invoice["SyncToken"] = $synctoken['synctoken'];
-                        } else {
-                            // Protect, must have SyncToken for update
+                        if (!$synctoken) {
                             throw new \Exception("SyncToken missing for QBO update");
                         }
+                        $invoice["SyncToken"] = $synctoken['synctoken'];
                     }
 
                     $result = $action->Invoice($invoice);
 
                     if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
-                        // Mark as failed
-                        $updateData["status"] = 4;
-                        $updateData["qboid"] = $isUpdate ? $qboid : 0;
+                        $pendingUpdates[] = [
+                            "tranid" => $row["tranid"],
+                            "amount" => $row["amount"],
+                            "qboid"  => $isUpdate ? $qboid : 0,
+                            "status" => 4,
+                        ];
                         $results[] = [
                             "tranid" => $row["tranid"],
                             "status" => "failed",
-                            "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+                            "error"  => isset($result['data']) ? $result['data'] : "Unknown error"
                         ];
                         $hasErrors = true;
                     } else {
-                        // Mark as success
-                        $updateData["status"] = $qboid == 0 ? 1 : 2;
-                        $updateData["qboid"] = isset($result["data"]["Invoice"]["Id"]) ? $result["data"]["Invoice"]["Id"] : ($qboid ?: null);
+                        $newQboId = isset($result["data"]["Invoice"]["Id"])
+                            ? $result["data"]["Invoice"]["Id"]
+                            : ($qboid ?: null);
+
+                        $pendingUpdates[] = [
+                            "tranid" => $row["tranid"],
+                            "amount" => $row["amount"],
+                            "qboid"  => $newQboId,
+                            "status" => $qboid == 0 ? 1 : 2,
+                        ];
                         $results[] = [
                             "tranid" => $row["tranid"],
                             "status" => "success",
-                            "qboid" => $updateData["qboid"]
+                            "qboid"  => $newQboId
                         ];
                     }
-
-                    // Always update DB
-                    $invoiceService->update($updateData, "wgcentralsupply");
                 } catch (Exception $e) {
-                    // Catch QBO errors / customer creation errors
-                    $updateData["status"] = 4;
-                    $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
-                    $invoiceService->update($updateData, "wgcentralsupply");
-
+                    $pendingUpdates[] = [
+                        "tranid" => $row["tranid"],
+                        "amount" => $row["amount"],
+                        "qboid"  => $qboid > 0 ? $qboid : 0,
+                        "status" => 4,
+                    ];
                     $results[] = [
                         "tranid" => $row["tranid"],
                         "status" => "failed",
-                        "error" => $e->getMessage()
+                        "error"  => $e->getMessage()
                     ];
                     $hasErrors = true;
                 }
             }
 
-            // Return overall result
+            // Phase 4: One batch DB write for all results
+            $invoiceService->update($pendingUpdates, "wgcentralsupply");
+
             return $response([
-                "status" => $hasErrors ? 400 : 200,
+                "status"  => $hasErrors ? 400 : 200,
                 "results" => $results
             ], $hasErrors ? 400 : 200);
         } catch (Exception $e) {
             return $response([
                 "status" => 400,
-                "error" => $e->getMessage()
+                "error"  => $e->getMessage()
             ], 400);
         }
     }
@@ -397,73 +606,142 @@ class ProfessionalFeeController extends Rest
         $synctoken = $qbo->synctoken($id, $token, "Invoice");
         return $response($synctoken, $synctoken['status']);
     }
-    private function line_invoice($id)
+    // private function line_invoice($id)
+    // {
+    //     $invoiceService = new InvoicesService($this->db);
+    //     $details = $invoiceService->pf_line($id);
+
+    //     $lines = [];
+    //     $qbo = new QboEntityService($this->db, $this->companyId);
+    //     $index = 0;
+
+    //     $grossTotal = 0;
+    //     $discountTotal = 0;
+    //     $ldiscountTotal = 0;
+
+    //     foreach ($details as $list) {
+    //         // Ensure $list is an array, not an object (stdClass)
+    //         if (is_object($list)) {
+    //             $list = (array)$list;
+    //         }
+
+    //         $lines[] = [
+    //             "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+    //             "DetailType" => "SalesItemLineDetail",
+    //             "SalesItemLineDetail" => [
+    //                 "ItemRef" => ["value" => isset($list["itemid"]) ? $list["itemid"] : 0],
+    //                 "Qty" => isset($list["qty"]) ? $list["qty"] : 1,
+    //                 "UnitPrice" => isset($list["price"]) ? $list["price"] : 0,
+    //                 "DiscountAmt" => (isset($list["ldiscount"]) ? $list["ldiscount"] : 0) + (isset($list["discount"]) ? $list["discount"] : 0),
+    //             ],
+    //             "LineNum" => $index + 1,
+    //             "Amount" => isset($list["gross"]) ? $list["gross"] : 0,
+    //         ];
+    //         $index++;
+
+    //         // Add to totals for subtotal and discounts
+    //         $grossTotal += isset($list["gross"]) ? $list["gross"] : 0;
+    //         $discountTotal += isset($list["discount"]) ? $list["discount"] : 0;
+    //         $ldiscountTotal += isset($list["ldiscount"]) ? $list["ldiscount"] : 0;
+    //     }
+
+    //     // Add subtotal line
+    //     $lines[] = [
+    //         "LineNum" => count($details) + 1,
+    //         "Description" => "Subtotal: PHP{$grossTotal}",
+    //         "DetailType" => "DescriptionOnly",
+    //     ];
+
+    //     // Add discount line
+    //     $discountSum = $discountTotal + $ldiscountTotal;
+    //     $lines[] = [
+    //         "Description" => "Line Discount & 20% Discount",
+    //         "DetailType" => "SalesItemLineDetail",
+    //         "SalesItemLineDetail" => [
+    //             "Qty" => 0,
+    //             "UnitPrice" => 0 - $discountSum,
+    //             "ItemRef" => ["value" => $qbo->discount(), "name" => "Discount"],
+    //         ],
+    //         "LineNum" => count($details) + 2,
+    //         "Amount" => 0 - $discountSum,
+    //     ];
+    //     // if ($discountSum != 0) {
+
+    //     // }
+
+    //     return $lines;
+    // }
+    private function line_invoice(array $tranids)
     {
         $invoiceService = new InvoicesService($this->db);
-        $details = $invoiceService->pf_line($id);
+        $qbo            = new QboEntityService($this->db, $this->companyId);
+        $discountItemId = $qbo->discount(); // called once
 
-        $lines = [];
-        $qbo = new QboEntityService($this->db, $this->companyId);
-        $index = 0;
+        // One query for all tranids
+        $allDetails = $invoiceService->pf_line_batch($tranids);
+        // returns rows with tranid column included
 
-        $grossTotal = 0;
-        $discountTotal = 0;
-        $ldiscountTotal = 0;
-
-        foreach ($details as $list) {
-            // Ensure $list is an array, not an object (stdClass)
-            if (is_object($list)) {
-                $list = (array)$list;
-            }
-
-            $lines[] = [
-                "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
-                "DetailType" => "SalesItemLineDetail",
-                "SalesItemLineDetail" => [
-                    "ItemRef" => ["value" => isset($list["itemid"]) ? $list["itemid"] : 0],
-                    "Qty" => isset($list["qty"]) ? $list["qty"] : 1,
-                    "UnitPrice" => (isset($list["vat"]) && $list["vat"] > 0)
-                        ? (isset($list["price"]) && $list["price"] ? ($list["price"] / 1.12) : 0)
-                        : (isset($list["price"]) ? $list["price"] : 0),
-                    "DiscountAmt" => (isset($list["ldiscount"]) ? $list["ldiscount"] : 0) + (isset($list["discount"]) ? $list["discount"] : 0),
-                ],
-                "LineNum" => $index + 1,
-                "Amount" => (isset($list["vat"]) && $list["vat"] > 0)
-                    ? (isset($list["gross"]) && $list["gross"] ? ($list["gross"] / 1.12) : 0)
-                    : (isset($list["gross"]) ? $list["gross"] : 0),
-            ];
-            $index++;
-
-            // Add to totals for subtotal and discounts
-            $grossTotal += isset($list["gross"]) ? $list["gross"] : 0;
-            $discountTotal += isset($list["discount"]) ? $list["discount"] : 0;
-            $ldiscountTotal += isset($list["ldiscount"]) ? $list["ldiscount"] : 0;
+        // Group by tranid
+        $grouped = [];
+        foreach ($allDetails as $list) {
+            $list    = is_object($list) ? (array)$list : $list;
+            $tranid  = $list['tranid'];
+            $grouped[$tranid][] = $list;
         }
 
-        // Add subtotal line
-        $lines[] = [
-            "LineNum" => count($details) + 1,
-            "Description" => "Subtotal: PHP{$grossTotal}",
-            "DetailType" => "DescriptionOnly",
-        ];
+        // Build lines per tranid
+        $result = [];
+        foreach ($grouped as $tranid => $details) {
+            $lines          = [];
+            $grossTotal     = 0;
+            $discountTotal  = 0;
+            $ldiscountTotal = 0;
+            $index          = 0;
 
-        // Add discount line
-        $discountSum = $discountTotal + $ldiscountTotal;
-        $lines[] = [
-            "Description" => "Line Discount & 20% Discount",
-            "DetailType" => "SalesItemLineDetail",
-            "SalesItemLineDetail" => [
-                "Qty" => 0,
-                "UnitPrice" => 0 - $discountSum,
-                "ItemRef" => ["value" => $qbo->discount(), "name" => "Discount"],
-            ],
-            "LineNum" => count($details) + 2,
-            "Amount" => 0 - $discountSum,
-        ];
-        // if ($discountSum != 0) {
+            foreach ($details as $list) {
+                $lines[] = [
+                    "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+                    "DetailType"  => "SalesItemLineDetail",
+                    "SalesItemLineDetail" => [
+                        "ItemRef"     => ["value" => isset($list["itemid"]) ? $list["itemid"] : 0],
+                        "Qty"         => isset($list["qty"]) ? $list["qty"] : 1,
+                        "UnitPrice"   => isset($list["price"]) ? $list["price"] : 0,
+                        "DiscountAmt" => (isset($list["ldiscount"]) ? $list["ldiscount"] : 0)
+                            + (isset($list["discount"]) ? $list["discount"] : 0),
+                    ],
+                    "LineNum" => $index + 1,
+                    "Amount"  => isset($list["gross"]) ? $list["gross"] : 0,
+                ];
+                $index++;
 
-        // }
+                $grossTotal     += isset($list["gross"])     ? $list["gross"]     : 0;
+                $discountTotal  += isset($list["discount"])  ? $list["discount"]  : 0;
+                $ldiscountTotal += isset($list["ldiscount"]) ? $list["ldiscount"] : 0;
+            }
 
-        return $lines;
+            $discountSum = $discountTotal + $ldiscountTotal;
+
+            $lines[] = [
+                "LineNum"     => count($details) + 1,
+                "Description" => "Subtotal: PHP{$grossTotal}",
+                "DetailType"  => "DescriptionOnly",
+            ];
+
+            $lines[] = [
+                "Description" => "Line Discount & 20% Discount",
+                "DetailType"  => "SalesItemLineDetail",
+                "SalesItemLineDetail" => [
+                    "Qty"       => 0,
+                    "UnitPrice" => 0 - $discountSum,
+                    "ItemRef"   => ["value" => $discountItemId, "name" => "Discount"],
+                ],
+                "LineNum" => count($details) + 2,
+                "Amount"  => 0 - $discountSum,
+            ];
+
+            $result[$tranid] = $lines;
+        }
+
+        return $result;
     }
 }

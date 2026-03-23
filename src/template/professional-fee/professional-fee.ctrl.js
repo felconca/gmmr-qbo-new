@@ -73,7 +73,8 @@ angular
       vm.handleBookItems = async (items) => {
         if (items.length > 0) {
           vm.isSending = true;
-          let token = await AuthService.token("accesstoken");
+          // let token = await AuthService.token("accesstoken");
+          let token = "00002"
           if (token) {
             let invoices = items.map((i) => ({
               tranid: i.tranid,
@@ -92,9 +93,8 @@ angular
               lname: i.lname,
               suffix: i.suffix,
               gtaxcalc: $qbo.outscope(),
-              memo: `PROFESSIONAL FEE SI - ${i.tranid}\nPatient: ${
-                i.pxid > 0 ? i.completepx : "Walk-In Patient"
-              }\nCreated By: ${i.ufname} ${i.ulname}`,
+              memo: `PROFESSIONAL FEE SI - ${i.tranid}\nPatient: ${i.pxid > 0 ? i.completepx : "Walk-In Patient"
+                }\nCreated By: ${i.ufname} ${i.ulname}`,
             }));
             // console.log(invoices);
             $http
