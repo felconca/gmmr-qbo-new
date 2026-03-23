@@ -73,8 +73,7 @@ angular
       vm.handleBookItems = async (items) => {
         if (items.length > 0) {
           vm.isSending = true;
-          // let token = await AuthService.token("accesstoken");
-          let token = "00002"
+          let token = await AuthService.token("accesstoken");
           if (token) {
             let invoices = items.map((i) => ({
               tranid: i.tranid,
