@@ -223,7 +223,6 @@ class NonPharmaController extends Rest
                 'data.*.mname'       => 'string',
                 'data.*.suffix'      => 'string',
             ]);
-
             $invoices = $input["data"];
             $token = $input["token"];
             $hasErrors = false;

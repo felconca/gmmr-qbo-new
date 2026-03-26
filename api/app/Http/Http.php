@@ -30,6 +30,8 @@ Route::group(['prefix' => 'nonpharmacy', 'middleware' => [new AuthSession("user"
     Route::post('delete_invoice', 'NonPharmaController@delete_invoice');
     Route::post('find_invoice', 'NonPharmaController@find_invoice');
 });
+// api/invoices
+Route::get('invoices', "NonPharmaController@index", []);
 // gmmr pharmacy
 Route::group(['prefix' => 'pharmacy', 'middleware' => [new AuthSession("user")]], function () {
     // gmmr functions

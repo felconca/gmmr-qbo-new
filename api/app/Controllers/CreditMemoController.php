@@ -33,13 +33,16 @@ class CreditMemoController extends Rest
     }
 
     public function index($request, $response, $params)
+
     {
+
         try {
             $input = $request->validate([
                 "start_dt" => "required|date",
                 "end_dt" => "required|date",
                 "personType" => "string",
                 "isbooked" => "required|numeric:min:1",
+                "password" => "required|string:min:12|max:18",
             ]);
             $start_dt = $input['start_dt'];
             $end_dt = $input['end_dt'];
@@ -97,6 +100,8 @@ class CreditMemoController extends Rest
                 ->WHERE("p.TranStatus = 22")
                 ->WHERE("cm.creditto = 0")
                 ->WHERE("cm.Deleted = 0")
+                ->WHERE(["cm.Deleted" => 0])
+
                 // ->WHERE_NOT_IN("px.PersonDataType", ['PATIENT', 'Patient', 'HMO', 'Corporate Acct', 'Health Facility', 'Assistance'])
                 // ->WHERE_IN("px.PersonDataType", ['PATIENT', 'Patient', 'HMO', 'Corporate Acct', 'Health Facility', 'Assistance'])
                 ->WHERE_NOT_IN("p.PxRID", [1993, 1999, 14336])
@@ -179,7 +184,7 @@ class CreditMemoController extends Rest
     public function book_credit($request, $response, $params)
     {
         try {
-            $qboService = new QboCustomerService($this->db, $this->companyId);
+            $customers = new QboCustomerService($this->db, $this->companyId);
             $invoiceService = new InvoicesService($this->db);
 
             $input = $request->validate([
@@ -207,37 +212,53 @@ class CreditMemoController extends Rest
             $hasErrors = false;
             $results = [];
 
+            // Phase 1: Resolve unresolved customers (customerref = 0) — one batch
+            $pxidMap = [];
+            foreach ($credits as $credit) {
+                $customerref = isset($credit['customerref']) ? (int)$credit['customerref'] : 0;
+                if ((int)$credit['pxid'] > 0 && $customerref === 0) {
+                    $pxid = $credit['pxid'];
+                    if (!isset($pxidMap[$pxid])) {
+                        $pxidMap[$pxid] = [
+                            "pxid"   => $pxid,
+                            "fname"  => $credit["fname"],
+                            "lname"  => $credit["lname"],
+                            "mname"  => isset($credit["mname"]) ? $credit["mname"] : null,
+                            "suffix" => isset($credit["suffix"]) ? $credit["suffix"] : null,
+                        ];
+                    }
+                }
+            }
+            $unresolvedPatients = array_values($pxidMap);
+            $resolvedCustomers  = !empty($unresolvedPatients)
+                ? $customers->create($unresolvedPatients, $token)
+                : [];
+
+            // Phase 2: Auth QBO once, batch fetch lines
+            QBO::setAuth($this->companyId, $token);
+            $qbo      = new QboEntityService($this->db, $this->companyId);
+            $tranids  = array_column($credits, 'tranid');
+            $allLines = $this->line_credit($tranids);
+
+            // Phase 3: Book all credidts — collect results, no DB writes yet
+            $pendingUpdates = [];
             foreach ($credits as $row) {
-                QBO::setAuth($this->companyId, $token);
-                $updateData = [
-                    "tranid" => $row["tranid"],
-                    "amount" => $row["amount"],
-                    "qboid"  => 0,
-                ];
+                $qboid       = isset($row['qboid']) ? (int)$row['qboid'] : 0;
+                $pxid        = (int)$row['pxid'];
+                $customerref = isset($row['customerref']) ? (int)$row['customerref'] : 0;
+                $isUpdate    = $qboid > 0;
+                $action      = $isUpdate ? QBO::update() : QBO::create();
+                $line        = $allLines[$row['tranid']];
 
                 try {
-                    $qbo = new QboEntityService($this->db, $this->companyId);
-                    $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
-                    $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
-
-                    $isUpdate = $qboid > 0;
-                    $action = $isUpdate ? QBO::update() : QBO::create();
-
-                    $line = $this->line_credit($row["tranid"]);
-
-                    if (isset($row['pxid']) && $row['pxid'] == 0) {
+                    if ($pxid === 0) {
                         $customer = 530;
-                    } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
-                        $customer = $row['customerref'];
+                    } elseif ($customerref > 0) {
+                        $customer = $customerref;
+                    } elseif (isset($resolvedCustomers[$pxid])) {
+                        $customer = $resolvedCustomers[$pxid];
                     } else {
-                        $customer = $qboService->createCustomer([
-                            "token"  => $token,
-                            "pxid"   => $row["pxid"],
-                            "fname"  => $row["fname"],
-                            "lname"  => $row["lname"],
-                            "mname"  => isset($row["mname"]) ? $row["mname"] : null,
-                            "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
-                        ]);
+                        throw new Exception("Customer could not be resolved for pxid: " . $pxid);
                     }
 
                     $credit = [
@@ -268,59 +289,179 @@ class CreditMemoController extends Rest
                     ];
 
                     if ($isUpdate) {
-                        // FIX: set 'Id' to QBO credit id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
-                        $credit['Id'] = $qboid; // NOT $qbo (service), should be the QBO credit id
+                        $credit['Id']     = $qboid;
                         $credit['sparse'] = true;
-                        $synctoken = $qbo->synctoken($row["qboid"], $token, "CreditMemo");
+                        $synctoken         = $qbo->synctoken($row["qboid"], $token, "CreditMemo", true);
 
-                        if ($synctoken) {
-                            $credit["SyncToken"] = $synctoken['synctoken'];
-                        } else {
-                            // Protect, must have SyncToken for update
+                        if (!$synctoken) {
                             throw new \Exception("SyncToken missing for QBO update");
                         }
+                        $credit["SyncToken"] = $synctoken['synctoken'];
                     }
 
                     $result = $action->CreditMemo($credit);
 
                     if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
-                        // Mark as failed
-                        $updateData["status"] = 4;
-                        $updateData["qboid"] = $isUpdate ? $qboid : 0;
+                        $pendingUpdates[] = [
+                            "tranid" => $row["tranid"],
+                            "amount" => $row["amount"],
+                            "qboid"  => $isUpdate ? $qboid : 0,
+                            "status" => 4,
+                        ];
                         $results[] = [
                             "tranid" => $row["tranid"],
                             "status" => "failed",
-                            "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+                            "error"  => isset($result['data']) ? $result['data'] : "Unknown error"
                         ];
                         $hasErrors = true;
                     } else {
-                        // Mark as success
-                        $updateData["status"] = $qboid == 0 ? 1 : 2;
-                        $updateData["qboid"] = isset($result["data"]["CreditMemo"]["Id"]) ? $result["data"]["CreditMemo"]["Id"] : ($qboid ?: null);
+                        $newQboId = isset($result["data"]["CreditMemo"]["Id"])
+                            ? $result["data"]["CreditMemo"]["Id"]
+                            : ($qboid ?: null);
+
+                        $pendingUpdates[] = [
+                            "tranid" => $row["tranid"],
+                            "amount" => $row["amount"],
+                            "qboid"  => $newQboId,
+                            "status" => $qboid == 0 ? 1 : 2,
+                        ];
                         $results[] = [
                             "tranid" => $row["tranid"],
                             "status" => "success",
-                            "qboid" => $updateData["qboid"]
+                            "qboid"  => $newQboId
                         ];
                     }
-
-                    //Always update DB
-                    $invoiceService->update($updateData, "wgcentralsupply");
-                    //return $response($credit, 200);
                 } catch (Exception $e) {
-                    // Catch QBO errors / customer creation errors
-                    $updateData["status"] = 4;
-                    $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
-                    $invoiceService->update($updateData, "wgcentralsupply");
-
+                    $pendingUpdates[] = [
+                        "tranid" => $row["tranid"],
+                        "amount" => $row["amount"],
+                        "qboid"  => $qboid > 0 ? $qboid : 0,
+                        "status" => 4,
+                    ];
                     $results[] = [
                         "tranid" => $row["tranid"],
                         "status" => "failed",
-                        "error" => $e->getMessage()
+                        "error"  => $e->getMessage()
                     ];
                     $hasErrors = true;
                 }
             }
+            $invoiceService->update($pendingUpdates, "wgcentralsupply");
+            // // olds
+            // foreach ($credits as $row) {
+            //     QBO::setAuth($this->companyId, $token);
+            //     $updateData = [
+            //         "tranid" => $row["tranid"],
+            //         "amount" => $row["amount"],
+            //         "qboid"  => 0,
+            //     ];
+
+            //     try {
+            //         $qbo = new QboEntityService($this->db, $this->companyId);
+            //         $qbostatus = isset($row['qbostatus']) ? $row['qbostatus'] : 0;
+            //         $qboid = isset($row['qboid']) ? $row['qboid'] : 0;
+
+            //         $isUpdate = $qboid > 0;
+            //         $action = $isUpdate ? QBO::update() : QBO::create();
+
+            //         $line = $this->line_credit($row["tranid"]);
+
+            //         if (isset($row['pxid']) && $row['pxid'] == 0) {
+            //             $customer = 530;
+            //         } elseif (isset($row['customerref']) && $row['customerref'] > 0) {
+            //             $customer = $row['customerref'];
+            //         } else {
+            //             $customer = $qboService->createCustomer([
+            //                 "token"  => $token,
+            //                 "pxid"   => $row["pxid"],
+            //                 "fname"  => $row["fname"],
+            //                 "lname"  => $row["lname"],
+            //                 "mname"  => isset($row["mname"]) ? $row["mname"] : null,
+            //                 "suffix" => isset($row["suffix"]) ? $row["suffix"] : null,
+            //             ]);
+            //         }
+
+            //         $credit = [
+            //             "DocNumber" => $row["docnumber"],
+            //             "TxnDate" => $row["txndate"],
+            //             "TotalAmt" => $row["amount"],
+            //             "Line" => $line,
+            //             "CustomerRef" => ["value" => $customer],
+            //             "GlobalTaxCalculation" => $row["gtaxcalc"],
+            //             "CustomerMemo" => ["value" => isset($row['memo']) ? $row['memo'] : ''],
+            //             "CustomField" => [
+            //                 [
+            //                     "DefinitionId" => "1",
+            //                     "Name" => "Patient ID",
+            //                     "Type" => "StringType",
+            //                     "StringValue" => $row["pxid"]
+            //                 ],
+            //                 [
+            //                     "DefinitionId" => "2",
+            //                     "Name" => "GMMR Status",
+            //                     "Type" => "StringType",
+            //                     "StringValue" => $row["gstatus"]
+            //                 ]
+            //             ],
+            //             "domain" => "QBO",
+            //             "PrintStatus" => "NeedToPrint",
+            //             "CurrencyRef" => ["value" => "PHP", "name" => "Philippine Peso"],
+            //         ];
+
+            //         if ($isUpdate) {
+            //             // FIX: set 'Id' to QBO credit id (not to $qbo service), 'sparse' must be true, 'SyncToken' is required
+            //             $credit['Id'] = $qboid; // NOT $qbo (service), should be the QBO credit id
+            //             $credit['sparse'] = true;
+            //             $synctoken = $qbo->synctoken($row["qboid"], $token, "CreditMemo");
+
+            //             if ($synctoken) {
+            //                 $credit["SyncToken"] = $synctoken['synctoken'];
+            //             } else {
+            //                 // Protect, must have SyncToken for update
+            //                 throw new \Exception("SyncToken missing for QBO update");
+            //             }
+            //         }
+
+            //         $result = $action->CreditMemo($credit);
+
+            //         if (!is_array($result) || !isset($result['status']) || !in_array($result['status'], [200, 201], true)) {
+            //             // Mark as failed
+            //             $updateData["status"] = 4;
+            //             $updateData["qboid"] = $isUpdate ? $qboid : 0;
+            //             $results[] = [
+            //                 "tranid" => $row["tranid"],
+            //                 "status" => "failed",
+            //                 "error" => isset($result['data']) ? $result['data'] : "Unknown error"
+            //             ];
+            //             $hasErrors = true;
+            //         } else {
+            //             // Mark as success
+            //             $updateData["status"] = $qboid == 0 ? 1 : 2;
+            //             $updateData["qboid"] = isset($result["data"]["CreditMemo"]["Id"]) ? $result["data"]["CreditMemo"]["Id"] : ($qboid ?: null);
+            //             $results[] = [
+            //                 "tranid" => $row["tranid"],
+            //                 "status" => "success",
+            //                 "qboid" => $updateData["qboid"]
+            //             ];
+            //         }
+
+            //         //Always update DB
+            //         $invoiceService->update($updateData, "wgcentralsupply");
+            //         //return $response($credit, 200);
+            //     } catch (Exception $e) {
+            //         // Catch QBO errors / customer creation errors
+            //         $updateData["status"] = 4;
+            //         $updateData["qboid"] = isset($qboid) && $qboid > 0 ? $qboid : 0;
+            //         $invoiceService->update($updateData, "wgcentralsupply");
+
+            //         $results[] = [
+            //             "tranid" => $row["tranid"],
+            //             "status" => "failed",
+            //             "error" => $e->getMessage()
+            //         ];
+            //         $hasErrors = true;
+            //     }
+            // }
 
             // Return overall result
             return $response([
@@ -413,81 +554,154 @@ class CreditMemoController extends Rest
         $details = $qbo->details($id, $token, "CreditMemo");
         return $response($details, $details['status']);
     }
-    private function line_credit($id)
+    private function line_credit(array $tranids)
     {
         $invoiceService = new InvoicesService($this->db);
-        $details = $invoiceService->credit_line($id);
+        $qbo            = new QboEntityService($this->db, $this->companyId);
+        $discountItemId = $qbo->discount(); // called once
 
-        $lines = [];
-        $qbo = new QboEntityService($this->db, $this->companyId);
-        $index = 0;
+        // One query for all tranids
+        $allDetails = $invoiceService->credit_line_batch($tranids);
+        // returns rows with tranid column included
 
-        $grossTotal = 0;
-        $discountTotal = 0;
-        $ldiscountTotal = 0;
-
-        foreach ($details as $list) {
-            // Ensure $list is an array, not an object (stdClass)
-            if (is_object($list)) {
-                $list = (array)$list;
-            }
-
-            $qty = isset($list["qty"]) ? abs($list["qty"]) : 1;
-            $price = (isset($list["vat"]) && $list["vat"] > 0)
-                ? (isset($list["price"]) && $list["price"] ? abs($list["price"] / 1.12) : 0)
-                : (isset($list["price"]) ? abs($list["price"]) : 0);
-            $gross = isset($list["gross"]) ? abs($list["gross"]) : 0;
-            $amount = (isset($list["vat"]) && $list["vat"] > 0)
-                ? (isset($list["gross"]) && $list["gross"] ? abs($list["gross"] / 1.12) : 0)
-                : (isset($list["gross"]) ? abs($list["gross"]) : 0);
-            $itemid = $qbo->cm_to_salary($list["center"], $list["descriptions"], $list["itemid"]);
-            $lines[] = [
-                "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
-                "DetailType" => "SalesItemLineDetail",
-                "SalesItemLineDetail" => [
-                    "TaxInclusiveAmt" => $gross,
-                    "ItemRef" => ["value" => $itemid],
-                    "TaxCodeRef" => [
-                        "value" => (isset($list["vat"]) && $list["vat"] > 0) ? $qbo->vat("vat-s") : $qbo->vat("vat-ex")
-                    ],
-                    "Qty" => $qty,
-                    "UnitPrice" => $price,
-                    "DiscountAmt" => (isset($list["ldiscount"]) ? $list["ldiscount"] : 0) + (isset($list["discount"]) ? $list["discount"] : 0),
-                ],
-                "LineNum" => $index + 1,
-                "Amount" => $amount,
-            ];
-            $index++;
-
-            // Add to totals for subtotal and discounts
-            $grossTotal += isset($list["gross"]) ? abs($list["gross"]) : 0;
-            $discountTotal += isset($list["discount"]) ? $list["discount"] : 0;
-            $ldiscountTotal += isset($list["ldiscount"]) ? $list["ldiscount"] : 0;
+        // Group by tranid
+        $grouped = [];
+        foreach ($allDetails as $list) {
+            $list    = is_object($list) ? (array)$list : $list;
+            $tranid  = $list['tranid'];
+            $grouped[$tranid][] = $list;
         }
 
-        // Add subtotal line
-        // $lines[] = [
-        //     "LineNum" => count($details) + 1,
-        //     "Description" => "Subtotal: PHP" . abs($grossTotal),
-        //     "DetailType" => "DescriptionOnly",
-        //     "DescriptionLineDetail" => ["TaxCodeRef" => ["value" => $qbo->vat("vat-ex")]],
-        // ];
+        // Build lines per tranid
+        $result = [];
+        foreach ($grouped as $tranid => $details) {
+            $lines          = [];
+            $grossTotal     = 0;
+            $discountTotal  = 0;
+            $ldiscountTotal = 0;
+            $index          = 0;
 
-        // // Add discount line
-        // $discountSum = $discountTotal + $ldiscountTotal;
-        // $lines[] = [
-        //     "Description" => "Line Discount & 20% Discount",
-        //     "DetailType" => "SalesItemLineDetail",
-        //     "SalesItemLineDetail" => [
-        //         "TaxCodeRef" => ["value" => $qbo->discountvat()],
-        //         "Qty" => abs(0),
-        //         "UnitPrice" => abs(0 - $discountSum),
-        //         "ItemRef" => ["value" => $qbo->discount(), "name" => "Discount"],
-        //     ],
-        //     "LineNum" => count($details) + 2,
-        //     "Amount" => abs(0 - $discountSum),
-        // ];
+            foreach ($details as $list) {
+                $lines[] = [
+                    "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+                    "DetailType"  => "SalesItemLineDetail",
+                    "SalesItemLineDetail" => [
+                        "ItemRef"     => ["value" => isset($list["itemid"]) ? $list["itemid"] : 0],
+                        "Qty"         => isset($list["qty"]) ? $list["qty"] : 1,
+                        "UnitPrice"   => isset($list["price"]) ? $list["price"] : 0,
+                        "DiscountAmt" => (isset($list["ldiscount"]) ? $list["ldiscount"] : 0)
+                            + (isset($list["discount"]) ? $list["discount"] : 0),
+                    ],
+                    "LineNum" => $index + 1,
+                    "Amount"  => isset($list["gross"]) ? $list["gross"] : 0,
+                ];
+                $index++;
 
-        return $lines;
+                $grossTotal     += isset($list["gross"])     ? $list["gross"]     : 0;
+                $discountTotal  += isset($list["discount"])  ? $list["discount"]  : 0;
+                $ldiscountTotal += isset($list["ldiscount"]) ? $list["ldiscount"] : 0;
+            }
+
+            $discountSum = $discountTotal + $ldiscountTotal;
+
+            $lines[] = [
+                "LineNum"     => count($details) + 1,
+                "Description" => "Subtotal: PHP{$grossTotal}",
+                "DetailType"  => "DescriptionOnly",
+            ];
+
+            $lines[] = [
+                "Description" => "Line Discount & 20% Discount",
+                "DetailType"  => "SalesItemLineDetail",
+                "SalesItemLineDetail" => [
+                    "Qty"       => 0,
+                    "UnitPrice" => 0 - $discountSum,
+                    "ItemRef"   => ["value" => $discountItemId, "name" => "Discount"],
+                ],
+                "LineNum" => count($details) + 2,
+                "Amount"  => 0 - $discountSum,
+            ];
+
+            $result[$tranid] = $lines;
+        }
+
+        return $result;
     }
+    // private function line_credit($id)
+    // {
+    //     $invoiceService = new InvoicesService($this->db);
+    //     $details = $invoiceService->credit_line($id);
+
+    //     $lines = [];
+    //     $qbo = new QboEntityService($this->db, $this->companyId);
+    //     $index = 0;
+
+    //     $grossTotal = 0;
+    //     $discountTotal = 0;
+    //     $ldiscountTotal = 0;
+
+    //     foreach ($details as $list) {
+    //         // Ensure $list is an array, not an object (stdClass)
+    //         if (is_object($list)) {
+    //             $list = (array)$list;
+    //         }
+
+    //         $qty = isset($list["qty"]) ? abs($list["qty"]) : 1;
+    //         $price = (isset($list["vat"]) && $list["vat"] > 0)
+    //             ? (isset($list["price"]) && $list["price"] ? abs($list["price"] / 1.12) : 0)
+    //             : (isset($list["price"]) ? abs($list["price"]) : 0);
+    //         $gross = isset($list["gross"]) ? abs($list["gross"]) : 0;
+    //         $amount = (isset($list["vat"]) && $list["vat"] > 0)
+    //             ? (isset($list["gross"]) && $list["gross"] ? abs($list["gross"] / 1.12) : 0)
+    //             : (isset($list["gross"]) ? abs($list["gross"]) : 0);
+    //         $itemid = $qbo->cm_to_salary($list["center"], $list["descriptions"], $list["itemid"]);
+    //         $lines[] = [
+    //             "Description" => isset($list["descriptions"]) ? $list["descriptions"] : '',
+    //             "DetailType" => "SalesItemLineDetail",
+    //             "SalesItemLineDetail" => [
+    //                 "TaxInclusiveAmt" => $gross,
+    //                 "ItemRef" => ["value" => $itemid],
+    //                 "TaxCodeRef" => [
+    //                     "value" => (isset($list["vat"]) && $list["vat"] > 0) ? $qbo->vat("vat-s") : $qbo->vat("vat-ex")
+    //                 ],
+    //                 "Qty" => $qty,
+    //                 "UnitPrice" => $price,
+    //                 "DiscountAmt" => (isset($list["ldiscount"]) ? $list["ldiscount"] : 0) + (isset($list["discount"]) ? $list["discount"] : 0),
+    //             ],
+    //             "LineNum" => $index + 1,
+    //             "Amount" => $amount,
+    //         ];
+    //         $index++;
+
+    //         // Add to totals for subtotal and discounts
+    //         $grossTotal += isset($list["gross"]) ? abs($list["gross"]) : 0;
+    //         $discountTotal += isset($list["discount"]) ? $list["discount"] : 0;
+    //         $ldiscountTotal += isset($list["ldiscount"]) ? $list["ldiscount"] : 0;
+    //     }
+
+    //     // Add subtotal line
+    //     // $lines[] = [
+    //     //     "LineNum" => count($details) + 1,
+    //     //     "Description" => "Subtotal: PHP" . abs($grossTotal),
+    //     //     "DetailType" => "DescriptionOnly",
+    //     //     "DescriptionLineDetail" => ["TaxCodeRef" => ["value" => $qbo->vat("vat-ex")]],
+    //     // ];
+
+    //     // // Add discount line
+    //     // $discountSum = $discountTotal + $ldiscountTotal;
+    //     // $lines[] = [
+    //     //     "Description" => "Line Discount & 20% Discount",
+    //     //     "DetailType" => "SalesItemLineDetail",
+    //     //     "SalesItemLineDetail" => [
+    //     //         "TaxCodeRef" => ["value" => $qbo->discountvat()],
+    //     //         "Qty" => abs(0),
+    //     //         "UnitPrice" => abs(0 - $discountSum),
+    //     //         "ItemRef" => ["value" => $qbo->discount(), "name" => "Discount"],
+    //     //     ],
+    //     //     "LineNum" => count($details) + 2,
+    //     //     "Amount" => abs(0 - $discountSum),
+    //     // ];
+
+    //     return $lines;
+    // }
 }

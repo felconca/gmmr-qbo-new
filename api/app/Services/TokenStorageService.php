@@ -2,9 +2,6 @@
 
 namespace App\Services;
 
-use Exception;
-use QuickBooksOnlineHelper\Facades\QBO;
-
 class TokenStorageService
 {
     protected $conn;
@@ -16,7 +13,7 @@ class TokenStorageService
 
     public function set($key, $value, $ttl = null)
     {
-        $expires_at = $ttl ? time() + $ttl : null;
+        $expires_at = (is_numeric($ttl) && $ttl > 0) ? (time() + (int)$ttl) : null;
         $data = ["key" => $key, "value" => $value, "expires_at" => $expires_at];
         $update = ["value" => $value, "expires_at" => $expires_at];
         // Use the QueryBuilder UPSERT method
@@ -30,7 +27,12 @@ class TokenStorageService
             ->SELECT(['value', 'expires_at'], 'tokens')
             ->WHERE(['key' => $key])
             ->get();
-        return $results;
+
+        if (is_array($results) && count($results) > 0) {
+            // Optionally, you can check for expiration here and return null if expired
+            return $results[0]->value;
+        }
+        return null;
     }
 
     public function deleteExpired()

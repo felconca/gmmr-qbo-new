@@ -38,7 +38,7 @@ class QBOServiceController extends Rest
     }
     public function generate($request, $response, $params)
     {
-        $conn = $this->db->quickbooks_db();
+        $conn = $this->db;
         $storage = new TokenStorageService($conn);
         try {
             $input = $request->validate(["token" => "required|string"]);
@@ -105,7 +105,7 @@ class QBOServiceController extends Rest
     }
     public function token($request, $response, $params)
     {
-        $conn = $this->db->quickbooks_db();
+        $conn = $this->db;
         $storage = new TokenStorageService($conn);
         try {
             // If Redis is not connected or throws a connection exception
