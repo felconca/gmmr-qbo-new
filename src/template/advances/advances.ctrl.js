@@ -59,14 +59,55 @@ angular
                 });
         }
 
+        // affiliated
+        vm.handleAdvancesAffiliated= (filter) => {
+            vm.isFiltering = true;
+            let start_dt = $filter("date")(filter.startDate, "yyyy-MM-dd"),
+                end_dt = $filter("date")(filter.endDate, "yyyy-MM-dd");
+
+            $http
+                .get(`api/advances/affiliated?start_dt=${start_dt}&end_dt=${end_dt}&isbooked=${filter.isBooked}`)
+                .then((res) => {
+                    vm.affiliatedList = res.data;
+                })
+                .catch((err) => {
+                    console.error(err);
+                })
+                .finally(() => {
+                    vm.isLoadingData = false;
+                    vm.isFiltering = false;
+                });
+        }
+        // affiliated
+        vm.handleAdvancesAssistance= (filter) => {
+            vm.isFiltering = true;
+            let start_dt = $filter("date")(filter.startDate, "yyyy-MM-dd"),
+                end_dt = $filter("date")(filter.endDate, "yyyy-MM-dd");
+
+            $http
+                .get(`api/advances/assistance?start_dt=${start_dt}&end_dt=${end_dt}&isbooked=${filter.isBooked}`)
+                .then((res) => {
+                    vm.assitanceList = res.data;
+                })
+                .catch((err) => {
+                    console.error(err);
+                })
+                .finally(() => {
+                    vm.isLoadingData = false;
+                    vm.isFiltering = false;
+                });
+        }
+
         vm.handleFilter = (filtered, to) => {
             if (to == 'employee') {
                 localStorage.setItem("employee-filter", JSON.stringify(filtered))
                 vm.handleAdvancesEmployee(filtered)
             } else if (to == 'assistant') {
                 localStorage.setItem("assistant-filter", JSON.stringify(filtered))
+                vm.handleAdvancesAssistance(filtered)
             } else if (to == 'affiliated') {
                 localStorage.setItem("affiliated-filter", JSON.stringify(filtered))
+                vm.handleAdvancesAffiliated(filtered)
             } else if (to == 'claims') {
                 localStorage.setItem("claims-filter", JSON.stringify(filtered))
             } else {
@@ -79,6 +120,38 @@ angular
                 vm.isSending = true;
                 let token = await AuthService.token("accesstoken");
                 if (token) {
+                    let line = (d) => {
+                        // data should be from d.details
+                        // If d.details is an array, create lines for each item in d.details
+                        if (!Array.isArray(d.details)) return [];
+                        return d.details.flatMap(detail => {
+                            let amount = Math.abs((detail.price ?? 0) * (detail.qty ?? 0));
+                            return [
+                                {
+                                    Description: detail.descriptions || '',
+                                    DetailType: "JournalEntryLineDetail",
+                                    JournalEntryLineDetail: {
+                                        PostingType: "Debit",
+                                        AccountRef: { value: d.account_ref }
+                                        // Entity removed
+                                    },
+                                    Amount: amount,
+                                },
+                                {
+                                    Description: detail.descriptions || '',
+                                    DetailType: "JournalEntryLineDetail",
+                                    JournalEntryLineDetail: {
+                                        PostingType: "Credit",
+                                        AccountRef: { value: 101 }
+                                        // Entity removed
+                                    },
+                                    Amount: amount,
+                                }
+                            ];
+                        });
+   
+                    };
+     
                     let credit = items.map((i) => ({
                         tranid: i.tranid,
                         cmid: i.cmid,
@@ -92,7 +165,7 @@ angular
                         qbostatus: i.sent_status,
                         qboid: i.sent_id,
                         customerref: i.qbopx,
-                        creditto: i.employee_ref,
+                        creditto: i.account_ref,
                         fname: i.fname,
                         mname: i.mname,
                         lname: i.lname,
@@ -100,6 +173,7 @@ angular
                         gtaxcalc: $qbo.included(),
                         memo: `${i.transtatus} - ${i.cmid}\nPatient: ${i.pxid > 0 ? i.completepx : "Walk-In Patient"
                             }\nCreated By: ${i.ufname} ${i.ulname}`,
+                        line: line(i)
                     }));
                     console.log(credit);
                     // $http
@@ -300,5 +374,9 @@ angular
 
         if (vs.current.name === 'app.employee') {
             vm.handleAdvancesEmployee(vm.filtered)
+        }else if (vs.current.name === 'app.affiliated') {
+            vm.handleAdvancesAffiliated(vm.filtered)
+        }else if (vs.current.name === 'app.assistant') {
+            vm.handleAdvancesAssistance(vm.filtered)
         }
     })

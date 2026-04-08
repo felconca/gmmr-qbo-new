@@ -177,6 +177,147 @@ class QboCustomerService
         return $patients;
     }
 
+    public function createCustomerBatch(array $rows, $token)
+    {
+        QBO::setAuth($this->companyId, $token);
+
+        // -----------------------------------
+        // 1) Collect unique patients
+        // -----------------------------------
+        $patients = [];
+        foreach ($rows as $row) {
+            if (empty($row['pxid'])) continue;
+
+            $pxid = (int)$row['pxid'];
+
+            if (!isset($patients[$pxid])) {
+                $patients[$pxid] = [
+                    'pxid'  => $pxid,
+                    'fname' => isset($row['fname']) ? $row['fname'] : '',
+                    'lname' => isset($row['lname']) ? $row['lname'] : '',
+                    'mname' => isset($row['mname']) ? $row['mname'] : '',
+                    'suffix' => isset($row['suffix']) ? $row['suffix'] : '',
+                ];
+            }
+        }
+
+        if (empty($patients)) return [];
+
+        // -----------------------------------
+        // 2) Build FullyQualifiedName list
+        // -----------------------------------
+        $nameToPxid = [];
+        $namesForQuery = [];
+
+        foreach ($patients as $pxid => $p) {
+            $parts = [];
+            if ($p['lname'] !== '')  $parts[] = $p['lname'] . ',';
+            if ($p['fname'] !== '')  $parts[] = $p['fname'];
+            if ($p['mname'] !== '')  $parts[] = $p['mname'];
+            if ($p['suffix'] !== '') $parts[] = $p['suffix'];
+
+            $fqName = trim(implode(' ', $parts));
+            $escaped = str_replace("'", "\\'", $fqName);
+
+            $nameToPxid[$escaped] = $pxid;
+            $namesForQuery[] = "'" . $escaped . "'";
+            $patients[$pxid]['fqname'] = $fqName;
+        }
+
+        // -----------------------------------
+        // 3) BULK fetch existing QBO customers
+        // -----------------------------------
+        $existingMap = []; // pxid => qboId
+
+        $query = "SELECT Id, FullyQualifiedName FROM Customer WHERE FullyQualifiedName IN ("
+            . implode(",", $namesForQuery) . ")";
+
+        $existing = QBO::query($query);
+
+        if (isset($existing['data']['QueryResponse']['Customer'])) {
+            foreach ($existing['data']['QueryResponse']['Customer'] as $cust) {
+                $escaped = str_replace("'", "\\'", $cust['FullyQualifiedName']);
+                if (isset($nameToPxid[$escaped])) {
+                    $pxid = $nameToPxid[$escaped];
+                    $existingMap[$pxid] = $cust['Id'];
+                }
+            }
+        }
+
+        // -----------------------------------
+        // 4) CREATE missing customers only
+        // -----------------------------------
+        $createdMap = [];
+
+        foreach ($patients as $pxid => $p) {
+            if (isset($existingMap[$pxid])) continue;
+
+            $customerData = [
+                "GivenName"          => $p['fname'],
+                "FamilyName"         => $p['lname'],
+                "FullyQualifiedName" => $p['fqname'],
+                "Notes"              => "Chart No. " . $pxid,
+                "CustomField" => [[
+                    "DefinitionId" => "3",
+                    "Name" => "PxRID",
+                    "Type" => "StringType",
+                    "StringValue" => $pxid
+                ]]
+            ];
+
+            if ($p['mname'] !== '') $customerData['MiddleName'] = $p['mname'];
+            if ($p['suffix'] !== '') $customerData['Suffix'] = $p['suffix'];
+
+            $result = QBO::create()->Customer($customerData);
+
+            if (!isset($result['data']['Customer']['Id'])) {
+                throw new Exception("QBO Customer creation failed for pxid: " . $pxid);
+            }
+
+            $createdMap[$pxid] = $result['data']['Customer']['Id'];
+        }
+
+        // -----------------------------------
+        // 5) Merge results
+        // -----------------------------------
+        $finalMap = $existingMap + $createdMap;
+
+        // -----------------------------------
+        // 6) BULK update local DB (ONE query)
+        // -----------------------------------
+        $this->bulkUpdatePatients($finalMap);
+
+        return $finalMap;
+    }
+
+    private function bulkUpdatePatients(array $map)
+    {
+        if (empty($map)) return;
+
+        // Build the CASE parts for bulk update using the query builder
+        $db = $this->db->ipadrbg();
+
+        // There is no .CASE() functionality, but we can use raw SQL for efficiency, 
+        // or, since QueryBuilder supports UPDATE + WHERE_IN, we can do one-by-one or chunked updates.
+        // For max efficiency and better maintainability, let's generate batch data and use QueryBuilder's UPDATE.
+
+        // Requires QueryBuilder to allow SQL expressions as values, or we must loop.
+        // Here, we'll do it with one query using the exec method for a custom CASE statement, 
+        // but using the QueryBuilder for escaping and formatting.
+
+        $ids = array_map('intval', array_keys($map));
+        $cases = [];
+        foreach ($map as $pxid => $qboId) {
+            $cases[] = "WHEN " . ((int)$pxid) . " THEN " . ((int)$qboId);
+        }
+
+        $caseSql = "CASE pxid " . implode(" ", $cases) . " END";
+        $sql = "UPDATE `patients` SET `customerref` = $caseSql WHERE `pxid` IN (" . implode(',', $ids) . ")";
+
+        // Use the core QueryBuilder's exec (assumed to be exposed for custom SQL)
+        $db->raw($sql); // Use a raw() or exec() method if available; or fallback to direct access
+    }
+
     private function updatePatient($pxid, $qboid)
     {
         return $this->db->ipadrbg()

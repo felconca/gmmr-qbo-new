@@ -41,8 +41,7 @@ class CreditMemoController extends Rest
                 "start_dt" => "required|date",
                 "end_dt" => "required|date",
                 "personType" => "string",
-                "isbooked" => "required|numeric:min:1",
-                "password" => "required|string:min:12|max:18",
+                "isbooked" => "required|numeric:min:1"
             ]);
             $start_dt = $input['start_dt'];
             $end_dt = $input['end_dt'];
@@ -105,6 +104,9 @@ class CreditMemoController extends Rest
                 // ->WHERE_NOT_IN("px.PersonDataType", ['PATIENT', 'Patient', 'HMO', 'Corporate Acct', 'Health Facility', 'Assistance'])
                 // ->WHERE_IN("px.PersonDataType", ['PATIENT', 'Patient', 'HMO', 'Corporate Acct', 'Health Facility', 'Assistance'])
                 ->WHERE_NOT_IN("p.PxRID", [1993, 1999, 14336])
+                // ->WHERE("p.Payment_for NOT LIKE '%salary%'")
+                // ->WHERE("pd.payment_for NOT LIKE '%salary%'")
+                ->WHERE("COALESCE(NULLIF(pd.payment_for, ''), p.Payment_for) NOT LIKE '%salary%'")
                 ->WHERE_BETWEEN("p.TranDate", $start_dt, $end_dt);
 
             if ($personType && $personType == "PATIENT") {
